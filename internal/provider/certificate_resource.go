@@ -239,8 +239,8 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Parse the response
-	var certResp CertificateResponse
-	if err := json.Unmarshal(apiResp.Data, &certResp); err != nil {
+	var cert Certificate
+	if err := json.Unmarshal(apiResp.Data, &cert); err != nil {
 		resp.Diagnostics.AddError(
 			"Parse Error",
 			fmt.Sprintf("Unable to parse Certificate response, got error: %s", err),
@@ -249,15 +249,18 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 	}
 
 	// Update the model with the response data
-	data.ID = types.StringValue(certResp.Data.ID)
-	data.CertificateContent = types.StringValue(certResp.Data.Attributes.CertificateContent)
-	data.DisplayName = types.StringValue(certResp.Data.Attributes.DisplayName)
-	data.Name = types.StringValue(certResp.Data.Attributes.Name)
-	data.Platform = types.StringValue(certResp.Data.Attributes.Platform)
-	data.SerialNumber = types.StringValue(certResp.Data.Attributes.SerialNumber)
+	data.ID = types.StringValue(cert.ID)
+	data.CertificateContent = types.StringValue(cert.Attributes.CertificateContent)
+	data.DisplayName = types.StringValue(cert.Attributes.DisplayName)
+	data.Name = types.StringValue(cert.Attributes.Name)
+	data.Platform = types.StringValue(cert.Attributes.Platform)
+	data.SerialNumber = types.StringValue(cert.Attributes.SerialNumber)
 
-	if certResp.Data.Attributes.ExpirationDate != nil {
-		data.ExpirationDate = types.StringValue(certResp.Data.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
+	if cert.Attributes.ExpirationDate != nil {
+		data.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
+	} else {
+		// Set to null if not provided by API
+		data.ExpirationDate = types.StringNull()
 	}
 
 	tflog.Trace(ctx, "Created Certificate", map[string]interface{}{
@@ -299,8 +302,8 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	// Parse the response
-	var certResp CertificateResponse
-	if err := json.Unmarshal(apiResp.Data, &certResp); err != nil {
+	var cert Certificate
+	if err := json.Unmarshal(apiResp.Data, &cert); err != nil {
 		resp.Diagnostics.AddError(
 			"Parse Error",
 			fmt.Sprintf("Unable to parse Certificate response, got error: %s", err),
@@ -309,21 +312,24 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	}
 
 	// Update the model with the response data
-	data.CertificateType = types.StringValue(certResp.Data.Attributes.CertificateType)
-	data.CertificateContent = types.StringValue(certResp.Data.Attributes.CertificateContent)
-	data.DisplayName = types.StringValue(certResp.Data.Attributes.DisplayName)
-	data.Name = types.StringValue(certResp.Data.Attributes.Name)
-	data.Platform = types.StringValue(certResp.Data.Attributes.Platform)
-	data.SerialNumber = types.StringValue(certResp.Data.Attributes.SerialNumber)
+	data.CertificateType = types.StringValue(cert.Attributes.CertificateType)
+	data.CertificateContent = types.StringValue(cert.Attributes.CertificateContent)
+	data.DisplayName = types.StringValue(cert.Attributes.DisplayName)
+	data.Name = types.StringValue(cert.Attributes.Name)
+	data.Platform = types.StringValue(cert.Attributes.Platform)
+	data.SerialNumber = types.StringValue(cert.Attributes.SerialNumber)
 
-	if certResp.Data.Attributes.ExpirationDate != nil {
-		data.ExpirationDate = types.StringValue(certResp.Data.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
+	if cert.Attributes.ExpirationDate != nil {
+		data.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
+	} else {
+		// Set to null if not provided by API
+		data.ExpirationDate = types.StringNull()
 	}
 
 	// Update relationships if present
-	if certResp.Data.Relationships != nil && certResp.Data.Relationships.PassTypeId != nil && certResp.Data.Relationships.PassTypeId.Data != nil {
+	if cert.Relationships != nil && cert.Relationships.PassTypeId != nil && cert.Relationships.PassTypeId.Data != nil {
 		relationshipsMap := map[string]attr.Value{
-			"pass_type_id": types.StringValue(certResp.Data.Relationships.PassTypeId.Data.ID),
+			"pass_type_id": types.StringValue(cert.Relationships.PassTypeId.Data.ID),
 		}
 		relationshipsObj, diags := types.ObjectValue(map[string]attr.Type{
 			"pass_type_id": types.StringType,
@@ -354,24 +360,22 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	tflog.Debug(ctx, "Revoking Certificate", map[string]interface{}{
+	tflog.Debug(ctx, "Removing Certificate from Terraform state", map[string]interface{}{
 		"id": data.ID.ValueString(),
 	})
 
-	// Make the API request to revoke the certificate
-	_, err := r.client.Do(ctx, Request{
-		Method:   http.MethodDelete,
-		Endpoint: fmt.Sprintf("/certificates/%s", data.ID.ValueString()),
-	})
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Client Error",
-			fmt.Sprintf("Unable to revoke Certificate, got error: %s", err),
-		)
-		return
-	}
+	// Certificates cannot be revoked programmatically through the App Store Connect API.
+	// According to Apple's documentation, certificates can only be revoked by Apple Developer Program Support.
+	// Therefore, we only remove the certificate from Terraform state.
 
-	tflog.Trace(ctx, "Revoked Certificate", map[string]interface{}{
+	// Add a warning to inform users about this limitation
+	resp.Diagnostics.AddWarning(
+		"Certificate Not Revoked",
+		"The certificate has been removed from Terraform state, but it cannot be revoked programmatically through the App Store Connect API. "+
+			"If you need to revoke this certificate, you must contact Apple Developer Program Support at https://developer.apple.com/support",
+	)
+
+	tflog.Trace(ctx, "Removed Certificate from Terraform state", map[string]interface{}{
 		"id": data.ID.ValueString(),
 	})
 }
