@@ -11,7 +11,7 @@ in Apple Wallet pass development.
 - **Pass Type IDs**: Create and manage Pass Type identifiers for Apple
   Wallet passes
 - **Certificates**: Create and manage certificates with Pass Type ID
-  relationships
+  relationships, including automatic recreation before expiration
 
 ### Data Sources
 
@@ -84,7 +84,43 @@ resource "appleappstoreconnect_certificate" "pass_cert" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = file("path/to/your/csr.pem")
 
-  relationships {
+  # Automatically recreate certificate 30 days before expiration (default)
+  # Set to 0 to disable automatic recreation
+  recreate_threshold = 2592000  # 30 days in seconds
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.membership.id
+  }
+}
+```
+
+### Certificate Auto-Renewal
+
+The certificate resource supports automatic recreation before
+expiration:
+
+```hcl
+resource "appleappstoreconnect_certificate" "auto_renew" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content     = tls_cert_request.example.cert_request_pem
+
+  # Recreate 60 days before expiration
+  recreate_threshold = 5184000  # 60 days in seconds
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.membership.id
+  }
+}
+
+# Disable auto-renewal
+resource "appleappstoreconnect_certificate" "manual_only" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content     = tls_cert_request.example.cert_request_pem
+
+  # Disable automatic recreation
+  recreate_threshold = 0
+
+  relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.membership.id
   }
 }

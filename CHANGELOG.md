@@ -15,10 +15,15 @@ FEATURES:
 
 ENHANCEMENTS:
 
+- **Certificate Auto-Renewal**: Added `recreate_threshold` argument to
+  `appleappstoreconnect_certificate` resource for automatic recreation
+  before expiration
 - Added pre-commit hooks for code quality enforcement
 - Improved code formatting and linting compliance
 - Added comprehensive test coverage for all components
 - Enhanced documentation generation using OpenTofu instead of Terraform
+- Certificate resource now properly handles Apple's API limitation for
+  programmatic revocation
 
 NOTES:
 

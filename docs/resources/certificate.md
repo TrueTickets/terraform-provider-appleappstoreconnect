@@ -13,6 +13,9 @@ Manages a Certificate in App Store Connect.
 Certificates are used to sign Apple Wallet passes and enable features
 like NFC. Different certificate types provide different capabilities.
 
+**Auto-Renewal**: The certificate resource supports automatic recreation
+before expiration using the `recreate_threshold` argument.
+
 ## Example Usage
 
 ### Basic Pass Certificate
@@ -27,7 +30,10 @@ resource "appleappstoreconnect_certificate" "example" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = file("example.csr")
 
-  relationships {
+  # Automatically recreate certificate 30 days before expiration (default)
+  recreate_threshold = 2592000  # 30 days in seconds
+
+  relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.example.id
   }
 }
@@ -93,6 +99,9 @@ resource "local_file" "certificate" {
 
 ### Optional
 
+- `recreate_threshold` (Number) The number of seconds before certificate
+  expiration when Terraform should recreate the certificate. Set to 0 to
+  disable automatic recreation. Default is 2592000 seconds (30 days).
 - `relationships` (Attributes) The relationships for the certificate.
   (see [below for nested schema](#nestedatt--relationships))
 
@@ -144,3 +153,52 @@ terraform import appleappstoreconnect_certificate.example YYYYYYYYYY
 ```
 
 Where `YYYYYYYYYY` is the Certificate ID from App Store Connect.
+
+## Auto-Renewal Examples
+
+### Certificate with Custom Renewal Threshold
+
+```hcl
+resource "appleappstoreconnect_certificate" "auto_renew" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content     = tls_cert_request.example.cert_request_pem
+
+  # Recreate 60 days before expiration
+  recreate_threshold = 5184000  # 60 days in seconds
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.example.id
+  }
+}
+```
+
+### Disable Auto-Renewal
+
+```hcl
+resource "appleappstoreconnect_certificate" "manual_only" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content     = tls_cert_request.example.cert_request_pem
+
+  # Disable automatic recreation
+  recreate_threshold = 0
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.example.id
+  }
+}
+```
+
+## Certificate Lifecycle
+
+- **Creation**: Creates a new certificate using the provided CSR
+- **Expiration Monitoring**: Automatically monitors certificate
+  expiration based on `recreate_threshold`
+- **Auto-Renewal**: Triggers recreation when expiration is within
+  threshold
+- **Deletion**: Removes certificate from Terraform state (certificates
+  cannot be revoked via API)
+
+**Note**: Apple's App Store Connect API does not support programmatic
+certificate revocation. When a certificate resource is destroyed, it is
+only removed from Terraform state. To revoke a certificate, contact
+Apple Developer Program Support.
