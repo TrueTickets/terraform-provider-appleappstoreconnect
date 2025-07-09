@@ -157,6 +157,21 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// Update the model with the response data
+	tflog.Debug(ctx, "Pass Type ID create response", map[string]interface{}{
+		"response_id": passTypeIDResp.Data.ID,
+		"identifier":  passTypeIDResp.Data.Attributes.Identifier,
+		"name":        passTypeIDResp.Data.Attributes.Name,
+	})
+
+	// Validate that we got an ID from the API
+	if passTypeIDResp.Data.ID == "" {
+		resp.Diagnostics.AddError(
+			"Invalid API Response",
+			"The API response did not contain a valid ID for the created Pass Type ID",
+		)
+		return
+	}
+
 	data.ID = types.StringValue(passTypeIDResp.Data.ID)
 	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
 		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
@@ -186,6 +201,15 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 	tflog.Debug(ctx, "Reading Pass Type ID", map[string]interface{}{
 		"id": data.ID.ValueString(),
 	})
+
+	// Validate that we have a valid ID
+	if data.ID.ValueString() == "" {
+		resp.Diagnostics.AddError(
+			"Invalid Resource State",
+			"The Pass Type ID resource does not have a valid ID",
+		)
+		return
+	}
 
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
@@ -255,6 +279,15 @@ func (r *PassTypeIDResource) Delete(ctx context.Context, req resource.DeleteRequ
 	tflog.Debug(ctx, "Deleting Pass Type ID", map[string]interface{}{
 		"id": data.ID.ValueString(),
 	})
+
+	// Validate that we have a valid ID
+	if data.ID.ValueString() == "" {
+		resp.Diagnostics.AddError(
+			"Invalid Resource State",
+			"The Pass Type ID resource does not have a valid ID",
+		)
+		return
+	}
 
 	// Make the API request
 	_, err := r.client.Do(ctx, Request{
