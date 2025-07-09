@@ -132,6 +132,12 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 		"description": data.Description.ValueString(),
 	})
 
+	// Log the request body for debugging
+	requestBody, _ := json.Marshal(createReq)
+	tflog.Debug(ctx, "Request body", map[string]interface{}{
+		"request_body": string(requestBody),
+	})
+
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
 		Method:   http.MethodPost,
@@ -147,8 +153,8 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 	}
 
 	// Parse the response
-	var passTypeIDResp PassTypeIDResponse
-	if err := json.Unmarshal(apiResp.Data, &passTypeIDResp); err != nil {
+	var passTypeID PassTypeID
+	if err := json.Unmarshal(apiResp.Data, &passTypeID); err != nil {
 		resp.Diagnostics.AddError(
 			"Parse Error",
 			fmt.Sprintf("Unable to parse Pass Type ID response, got error: %s", err),
@@ -156,15 +162,20 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
+	// Log the raw response for debugging
+	tflog.Debug(ctx, "Raw API response", map[string]interface{}{
+		"raw_response": string(apiResp.Data),
+	})
+
 	// Update the model with the response data
 	tflog.Debug(ctx, "Pass Type ID create response", map[string]interface{}{
-		"response_id": passTypeIDResp.Data.ID,
-		"identifier":  passTypeIDResp.Data.Attributes.Identifier,
-		"name":        passTypeIDResp.Data.Attributes.Name,
+		"response_id": passTypeID.ID,
+		"identifier":  passTypeID.Attributes.Identifier,
+		"name":        passTypeID.Attributes.Name,
 	})
 
 	// Validate that we got an ID from the API
-	if passTypeIDResp.Data.ID == "" {
+	if passTypeID.ID == "" {
 		resp.Diagnostics.AddError(
 			"Invalid API Response",
 			"The API response did not contain a valid ID for the created Pass Type ID",
@@ -172,9 +183,9 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 
-	data.ID = types.StringValue(passTypeIDResp.Data.ID)
-	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
-		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
+	data.ID = types.StringValue(passTypeID.ID)
+	if passTypeID.Attributes.CreatedDate != nil {
+		data.CreatedDate = types.StringValue(passTypeID.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
 	} else {
 		// Set to null if not provided by API
 		data.CreatedDate = types.StringNull()
@@ -225,8 +236,8 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// Parse the response
-	var passTypeIDResp PassTypeIDResponse
-	if err := json.Unmarshal(apiResp.Data, &passTypeIDResp); err != nil {
+	var passTypeID PassTypeID
+	if err := json.Unmarshal(apiResp.Data, &passTypeID); err != nil {
 		resp.Diagnostics.AddError(
 			"Parse Error",
 			fmt.Sprintf("Unable to parse Pass Type ID response, got error: %s", err),
@@ -235,10 +246,10 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 	}
 
 	// Update the model with the response data
-	data.Identifier = types.StringValue(passTypeIDResp.Data.Attributes.Identifier)
-	data.Description = types.StringValue(passTypeIDResp.Data.Attributes.Name)
-	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
-		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
+	data.Identifier = types.StringValue(passTypeID.Attributes.Identifier)
+	data.Description = types.StringValue(passTypeID.Attributes.Name)
+	if passTypeID.Attributes.CreatedDate != nil {
+		data.CreatedDate = types.StringValue(passTypeID.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
 	} else {
 		// Set to null if not provided by API
 		data.CreatedDate = types.StringNull()
