@@ -222,7 +222,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 func (d *PassTypeIDDataSource) updateModel(model *PassTypeIDDataSourceModel, passTypeID *PassTypeID) {
 	model.ID = types.StringValue(passTypeID.ID)
 	model.Identifier = types.StringValue(passTypeID.Attributes.Identifier)
-	model.Description = types.StringValue(passTypeID.Attributes.Description)
+	model.Description = types.StringValue(passTypeID.Attributes.Name)
 	if passTypeID.Attributes.CreatedDate != nil {
 		model.CreatedDate = types.StringValue(passTypeID.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
 	}

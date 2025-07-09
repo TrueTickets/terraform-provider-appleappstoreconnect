@@ -121,8 +121,8 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 		Data: PassTypeIDCreateRequestData{
 			Type: "passTypeIds",
 			Attributes: PassTypeIDCreateRequestAttributes{
-				Identifier:  data.Identifier.ValueString(),
-				Description: data.Description.ValueString(),
+				Identifier: data.Identifier.ValueString(),
+				Name:       data.Description.ValueString(),
 			},
 		},
 	}
@@ -209,7 +209,7 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 
 	// Update the model with the response data
 	data.Identifier = types.StringValue(passTypeIDResp.Data.Attributes.Identifier)
-	data.Description = types.StringValue(passTypeIDResp.Data.Attributes.Description)
+	data.Description = types.StringValue(passTypeIDResp.Data.Attributes.Name)
 	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
 		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
 	}

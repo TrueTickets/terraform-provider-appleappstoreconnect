@@ -18,7 +18,7 @@ type PassTypeID struct {
 // PassTypeIDAttributes represents the attributes of a Pass Type ID.
 type PassTypeIDAttributes struct {
 	Identifier  string     `json:"identifier"`
-	Description string     `json:"description"`
+	Name        string     `json:"name"`
 	CreatedDate *time.Time `json:"createdDate,omitempty"`
 }
 
@@ -40,8 +40,8 @@ type PassTypeIDCreateRequestData struct {
 
 // PassTypeIDCreateRequestAttributes represents the attributes for creating a Pass Type ID.
 type PassTypeIDCreateRequestAttributes struct {
-	Identifier  string `json:"identifier"`
-	Description string `json:"description"`
+	Identifier string `json:"identifier"`
+	Name       string `json:"name"`
 }
 
 // PassTypeIDResponse represents the response from the Pass Type ID API.
