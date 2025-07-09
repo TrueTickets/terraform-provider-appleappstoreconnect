@@ -225,5 +225,8 @@ func (d *PassTypeIDDataSource) updateModel(model *PassTypeIDDataSourceModel, pas
 	model.Description = types.StringValue(passTypeID.Attributes.Name)
 	if passTypeID.Attributes.CreatedDate != nil {
 		model.CreatedDate = types.StringValue(passTypeID.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
+	} else {
+		// Set to null if not provided by API
+		model.CreatedDate = types.StringNull()
 	}
 }

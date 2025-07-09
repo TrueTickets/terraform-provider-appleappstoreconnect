@@ -160,6 +160,9 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 	data.ID = types.StringValue(passTypeIDResp.Data.ID)
 	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
 		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
+	} else {
+		// Set to null if not provided by API
+		data.CreatedDate = types.StringNull()
 	}
 
 	tflog.Trace(ctx, "Created Pass Type ID", map[string]interface{}{
@@ -212,6 +215,9 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 	data.Description = types.StringValue(passTypeIDResp.Data.Attributes.Name)
 	if passTypeIDResp.Data.Attributes.CreatedDate != nil {
 		data.CreatedDate = types.StringValue(passTypeIDResp.Data.Attributes.CreatedDate.Format("2006-01-02T15:04:05Z"))
+	} else {
+		// Set to null if not provided by API
+		data.CreatedDate = types.StringNull()
 	}
 
 	// Save updated data into Terraform state
