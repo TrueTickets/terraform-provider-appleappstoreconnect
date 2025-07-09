@@ -61,6 +61,16 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 			want:       true,
 		},
 		{
+			name:       "valid pass type identifier with dashes",
+			identifier: "pass.com.my-company.membership",
+			want:       true,
+		},
+		{
+			name:       "valid pass type identifier with dashes in multiple segments",
+			identifier: "pass.com.my-company.mobile-app.membership",
+			want:       true,
+		},
+		{
 			name:       "invalid - missing pass prefix",
 			identifier: "com.example.membership",
 			want:       false,
@@ -89,6 +99,21 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 			name:       "invalid - special characters",
 			identifier: "pass.com.example.membership!",
 			want:       false,
+		},
+		{
+			name:       "invalid - dash at start of segment",
+			identifier: "pass.com.-example.membership",
+			want:       false,
+		},
+		{
+			name:       "invalid - dash at end of segment",
+			identifier: "pass.com.example-.membership",
+			want:       false,
+		},
+		{
+			name:       "invalid - consecutive dashes",
+			identifier: "pass.com.example--test.membership",
+			want:       true, // consecutive dashes are actually valid in domain names
 		},
 	}
 

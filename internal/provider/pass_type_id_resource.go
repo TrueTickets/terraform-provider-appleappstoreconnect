@@ -275,7 +275,8 @@ func (r *PassTypeIDResource) ImportState(ctx context.Context, req resource.Impor
 // isValidPassTypeIdentifier validates that the identifier follows reverse-DNS format.
 func isValidPassTypeIdentifier(identifier string) bool {
 	// Pattern for reverse-DNS format starting with "pass."
-	pattern := `^pass\.[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*\.[a-zA-Z0-9]+$`
+	// Each segment can contain alphanumeric characters and hyphens, but cannot start or end with a hyphen
+	pattern := `^pass\.([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)+(\.([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?))+$`
 	matched, _ := regexp.MatchString(pattern, identifier)
 	return matched
 }
