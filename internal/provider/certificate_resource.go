@@ -8,12 +8,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
+	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectplanmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
@@ -48,6 +51,7 @@ type CertificateResourceModel struct {
 	Platform           types.String `tfsdk:"platform"`
 	SerialNumber       types.String `tfsdk:"serial_number"`
 	ExpirationDate     types.String `tfsdk:"expiration_date"`
+	RecreateThreshold  types.Int64  `tfsdk:"recreate_threshold"`
 	Relationships      types.Object `tfsdk:"relationships"`
 }
 
@@ -127,6 +131,20 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 			"expiration_date": schema.StringAttribute{
 				MarkdownDescription: "The expiration date of the certificate.",
 				Computed:            true,
+				PlanModifiers: []planmodifier.String{
+					NewCertificateRecreateThresholdPlanModifier(),
+				},
+			},
+			"recreate_threshold": schema.Int64Attribute{
+				MarkdownDescription: "The number of seconds before certificate expiration when Terraform should recreate the certificate. Set to 0 to disable automatic recreation. Default is 2592000 seconds (30 days).",
+				Optional:            true,
+				Computed:            true,
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.UseStateForUnknown(),
+				},
+				Validators: []validator.Int64{
+					int64validator.AtLeast(0),
+				},
 			},
 			"relationships": schema.SingleNestedAttribute{
 				MarkdownDescription: "The relationships for the certificate.",
@@ -263,6 +281,11 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		data.ExpirationDate = types.StringNull()
 	}
 
+	// Set default recreate threshold if not provided
+	if data.RecreateThreshold.IsNull() {
+		data.RecreateThreshold = types.Int64Value(2592000) // 30 days
+	}
+
 	tflog.Trace(ctx, "Created Certificate", map[string]interface{}{
 		"id": data.ID.ValueString(),
 	})
@@ -382,4 +405,96 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 
 func (r *CertificateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// CertificateRecreateThresholdPlanModifier is a custom plan modifier that triggers replacement
+// when the certificate is within the recreate threshold of expiration.
+type CertificateRecreateThresholdPlanModifier struct{}
+
+// NewCertificateRecreateThresholdPlanModifier creates a new instance of the plan modifier.
+func NewCertificateRecreateThresholdPlanModifier() planmodifier.String {
+	return CertificateRecreateThresholdPlanModifier{}
+}
+
+// Description returns a human-readable description of the plan modifier.
+func (m CertificateRecreateThresholdPlanModifier) Description(ctx context.Context) string {
+	return "Recreates the certificate when it is within the recreate threshold of expiration."
+}
+
+// MarkdownDescription returns a markdown description of the plan modifier.
+func (m CertificateRecreateThresholdPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return "Recreates the certificate when it is within the recreate threshold of expiration."
+}
+
+// PlanModifyString implements the plan modifier logic.
+func (m CertificateRecreateThresholdPlanModifier) PlanModifyString(ctx context.Context, req planmodifier.StringRequest, resp *planmodifier.StringResponse) {
+	// If the resource is being created, don't modify the plan
+	if req.State.Raw.IsNull() {
+		return
+	}
+
+	// If the resource is being destroyed, don't modify the plan
+	if req.Plan.Raw.IsNull() {
+		return
+	}
+
+	// If the expiration date is not set, don't modify the plan
+	if req.StateValue.IsNull() || req.StateValue.IsUnknown() {
+		return
+	}
+
+	// Get the current state
+	var state CertificateResourceModel
+	diags := req.State.Get(ctx, &state)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get the planned state
+	var plan CertificateResourceModel
+	diags = req.Plan.Get(ctx, &plan)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Get the recreate threshold (default to 30 days if not set)
+	var thresholdSeconds int64 = 2592000 // 30 days
+	if !plan.RecreateThreshold.IsNull() && !plan.RecreateThreshold.IsUnknown() {
+		thresholdSeconds = plan.RecreateThreshold.ValueInt64()
+	}
+
+	// If threshold is 0, don't recreate
+	if thresholdSeconds == 0 {
+		return
+	}
+
+	// Parse the expiration date
+	expirationStr := state.ExpirationDate.ValueString()
+	if expirationStr == "" {
+		return
+	}
+
+	expirationDate, err := time.Parse("2006-01-02T15:04:05Z", expirationStr)
+	if err != nil {
+		tflog.Warn(ctx, "Failed to parse expiration date", map[string]interface{}{
+			"expiration_date": expirationStr,
+			"error":           err.Error(),
+		})
+		return
+	}
+
+	// Calculate the threshold time
+	thresholdTime := time.Now().Add(time.Duration(thresholdSeconds) * time.Second)
+
+	// If the certificate expires within the threshold, require replacement
+	if expirationDate.Before(thresholdTime) {
+		tflog.Info(ctx, "Certificate expiration is within recreate threshold, requiring replacement", map[string]interface{}{
+			"expiration_date":   expirationDate.Format("2006-01-02T15:04:05Z"),
+			"threshold_time":    thresholdTime.Format("2006-01-02T15:04:05Z"),
+			"threshold_seconds": thresholdSeconds,
+		})
+		resp.RequiresReplace = true
+	}
 }

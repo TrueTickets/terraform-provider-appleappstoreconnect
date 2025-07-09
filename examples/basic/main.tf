@@ -48,6 +48,9 @@ resource "appleappstoreconnect_certificate" "tf_test" {
   certificate_type = "PASS_TYPE_ID"
   csr_content      = tls_cert_request.tf_test.cert_request_pem
 
+  # Recreate the certificate 60 days before expiration (default is 30 days)
+  recreate_threshold = 5184000 # 60 days in seconds
+
   relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.tf_test.id
   }
