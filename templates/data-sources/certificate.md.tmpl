@@ -1,0 +1,75 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Find by ID
+
+```hcl
+data "appleappstoreconnect_certificate" "example" {
+  id = "YYYYYYYYYY"
+}
+```
+
+### Find by Type and Serial Number
+
+```hcl
+# Find Certificate by type
+data "appleappstoreconnect_certificate" "pass_cert" {
+  filter {
+    certificate_type = "PASS_TYPE_ID"
+  }
+}
+
+# Find Certificate by serial number
+data "appleappstoreconnect_certificate" "specific_cert" {
+  filter {
+    certificate_type = "PASS_TYPE_ID"
+    serial_number   = "1234567890ABCDEF"
+  }
+}
+
+# Save certificate to local file
+resource "local_file" "cert" {
+  content  = data.appleappstoreconnect_certificate.pass_cert.certificate_content
+  filename = "pass_certificate.pem"
+}
+```
+
+### Find Pass Certificate
+
+```hcl
+# Find a Pass Type certificate
+data "appleappstoreconnect_certificate" "pass_cert" {
+  filter {
+    certificate_type = "PASS_TYPE_ID"
+  }
+}
+
+# Use the certificate data
+output "certificate_expires" {
+  value = data.appleappstoreconnect_certificate.pass_cert.expiration_date
+}
+
+output "pass_type_id" {
+  value = data.appleappstoreconnect_certificate.pass_cert.relationships.pass_type_id
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Filter Behavior
+
+When using the `filter` block:
+- If multiple certificates match the filter criteria, an error will be returned
+- Use the `appleappstoreconnect_certificates` data source to retrieve multiple certificates
+- The `serial_number` filter provides an exact match
+- You must provide either `id` or `filter`, but not both

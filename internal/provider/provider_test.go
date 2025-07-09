@@ -4,9 +4,11 @@
 package provider
 
 import (
+	"context"
 	"os"
 	"testing"
 
+	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 	"github.com/hashicorp/terraform-plugin-go/tfprotov6"
 )
@@ -42,5 +44,45 @@ func TestProvider(t *testing.T) {
 	p := New("test")()
 	if p == nil {
 		t.Fatal("provider should not be nil")
+	}
+}
+
+func TestProviderMetadata(t *testing.T) {
+	ctx := context.Background()
+	p := &AppleAppStoreConnectProvider{version: "test"}
+
+	req := provider.MetadataRequest{}
+	resp := &provider.MetadataResponse{}
+
+	p.Metadata(ctx, req, resp)
+
+	if resp.TypeName != "appleappstoreconnect" {
+		t.Errorf("Expected TypeName 'appleappstoreconnect', got %s", resp.TypeName)
+	}
+
+	if resp.Version != "test" {
+		t.Errorf("Expected Version 'test', got %s", resp.Version)
+	}
+}
+
+func TestProviderResources(t *testing.T) {
+	ctx := context.Background()
+	p := &AppleAppStoreConnectProvider{}
+
+	resources := p.Resources(ctx)
+
+	if len(resources) != 2 {
+		t.Errorf("Expected 2 resources, got %d", len(resources))
+	}
+}
+
+func TestProviderDataSources(t *testing.T) {
+	ctx := context.Background()
+	p := &AppleAppStoreConnectProvider{}
+
+	dataSources := p.DataSources(ctx)
+
+	if len(dataSources) != 3 {
+		t.Errorf("Expected 3 data sources, got %d", len(dataSources))
 	}
 }

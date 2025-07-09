@@ -1,0 +1,59 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Find by ID
+
+```hcl
+data "appleappstoreconnect_pass_type_id" "example" {
+  id = "XXXXXXXXXX"
+}
+```
+
+### Find by Identifier
+
+```hcl
+# Find Pass Type ID by identifier
+data "appleappstoreconnect_pass_type_id" "example" {
+  filter {
+    identifier = "pass.com.example.membership"
+  }
+}
+
+# Use the Pass Type ID
+output "pass_type_id" {
+  value = data.appleappstoreconnect_pass_type_id.example.id
+}
+```
+
+### Use with Certificate
+
+```hcl
+# Find existing Pass Type ID
+data "appleappstoreconnect_pass_type_id" "existing" {
+  filter {
+    identifier = "pass.com.example.membership"
+  }
+}
+
+# Create certificate for the existing Pass Type ID
+resource "appleappstoreconnect_certificate" "cert" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content     = file("membership.csr")
+
+  relationships {
+    pass_type_id = data.appleappstoreconnect_pass_type_id.existing.id
+  }
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

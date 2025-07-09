@@ -36,15 +36,27 @@ type Client struct {
 	issuerID   string
 	keyID      string
 	privateKey interface{}
+	baseURL    string
 
 	// Token management
-	tokenMutex   sync.RWMutex
+	mu           sync.RWMutex
 	currentToken string
 	tokenExpiry  time.Time
 }
 
 // NewClient creates a new App Store Connect API client.
 func NewClient(issuerID, keyID, privateKeyPEM string) (*Client, error) {
+	// Validate inputs
+	if issuerID == "" {
+		return nil, fmt.Errorf("issuer ID cannot be empty")
+	}
+	if keyID == "" {
+		return nil, fmt.Errorf("key ID cannot be empty")
+	}
+	if privateKeyPEM == "" {
+		return nil, fmt.Errorf("private key cannot be empty")
+	}
+
 	// Parse the private key from PEM format
 	block, _ := pem.Decode([]byte(privateKeyPEM))
 	if block == nil {
@@ -72,6 +84,7 @@ func NewClient(issuerID, keyID, privateKeyPEM string) (*Client, error) {
 		issuerID:   issuerID,
 		keyID:      keyID,
 		privateKey: privateKey,
+		baseURL:    baseURL,
 	}, nil
 }
 
@@ -102,17 +115,17 @@ func (c *Client) generateToken() (string, error) {
 
 // getToken returns a valid token, refreshing if necessary.
 func (c *Client) getToken() (string, error) {
-	c.tokenMutex.RLock()
+	c.mu.RLock()
 	if c.currentToken != "" && time.Now().Before(c.tokenExpiry.Add(-tokenRefreshBuffer)) {
 		token := c.currentToken
-		c.tokenMutex.RUnlock()
+		c.mu.RUnlock()
 		return token, nil
 	}
-	c.tokenMutex.RUnlock()
+	c.mu.RUnlock()
 
 	// Need to refresh token
-	c.tokenMutex.Lock()
-	defer c.tokenMutex.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	// Double-check after acquiring write lock
 	if c.currentToken != "" && time.Now().Before(c.tokenExpiry.Add(-tokenRefreshBuffer)) {
@@ -187,7 +200,7 @@ type Paging struct {
 // Do performs an API request.
 func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	// Build URL
-	url := baseURL + req.Endpoint
+	url := c.baseURL + req.Endpoint
 
 	// Add query parameters
 	if len(req.Query) > 0 {

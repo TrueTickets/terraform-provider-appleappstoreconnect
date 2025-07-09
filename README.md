@@ -1,21 +1,30 @@
 # Terraform Provider for Apple App Store Connect
 
-This Terraform provider enables management of Apple App Store Connect resources, with initial support for Pass Type IDs and Certificates used in Apple Wallet pass development.
+This Terraform provider enables management of Apple App Store Connect
+resources, with initial support for Pass Type IDs and Certificates used
+in Apple Wallet pass development.
 
 ## Features
 
 ### Resources
-- **Pass Type IDs**: Create and manage Pass Type identifiers for Apple Wallet passes
-- **Certificates**: Create and manage certificates with Pass Type ID relationships
+
+- **Pass Type IDs**: Create and manage Pass Type identifiers for Apple
+  Wallet passes
+- **Certificates**: Create and manage certificates with Pass Type ID
+  relationships
 
 ### Data Sources
+
 - **Pass Type ID**: Retrieve information about existing Pass Type IDs
-- **Certificate**: Retrieve information about a single certificate with filtering
-- **Certificates**: List multiple certificates with filtering by type and display name
+- **Certificate**: Retrieve information about a single certificate with
+  filtering
+- **Certificates**: List multiple certificates with filtering by type
+  and display name
 
 ## Requirements
 
-- [Terraform](https://developer.hashicorp.com/terraform/downloads) >= 1.0
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) >=
+  1.0
 - [Go](https://golang.org/doc/install) >= 1.23 (for development)
 - Apple Developer account with App Store Connect API access
 - API Key with appropriate permissions
@@ -74,7 +83,7 @@ resource "appleappstoreconnect_pass_type_id" "membership" {
 resource "appleappstoreconnect_certificate" "pass_cert" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = file("path/to/your/csr.pem")
-  
+
   relationships {
     pass_type_id = appleappstoreconnect_pass_type_id.membership.id
   }
@@ -121,7 +130,15 @@ make generate
 
 ### Code Quality
 
+The project uses pre-commit hooks to enforce code quality standards:
+
 ```shell
+# Install pre-commit hooks
+pre-commit install
+
+# Run all pre-commit hooks
+pre-commit run --all-files
+
 # Format code
 make fmt
 
@@ -129,10 +146,19 @@ make fmt
 make lint
 ```
 
+#### Pre-commit Hooks
+
+- **go fmt**: Formats Go code
+- **go vet**: Checks Go code for suspicious constructs
+- **golangci-lint**: Runs comprehensive Go linting
+- **prettier**: Formats YAML and other files
+- **yamllint**: Validates YAML syntax and formatting
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This provider is distributed under the [Mozilla Public License 2.0](LICENSE).
+This provider is distributed under the
+[Mozilla Public License 2.0](LICENSE).

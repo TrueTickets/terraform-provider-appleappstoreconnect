@@ -1,0 +1,132 @@
+{
+	"name": "terraform-provider-appleappstoreconnect",
+	"description": "Tools for working with the Apple App Store Connect Terraform Provider",
+	"version": "1.0.0",
+	"tools": [
+		{
+			"name": "build_provider",
+			"description": "Build the Terraform provider binary",
+			"command": "go build -o terraform-provider-appleappstoreconnect",
+			"workingDirectory": "."
+		},
+		{
+			"name": "run_tests",
+			"description": "Run unit tests for the provider",
+			"command": "go test ./...",
+			"workingDirectory": "."
+		},
+		{
+			"name": "run_acceptance_tests",
+			"description": "Run acceptance tests (requires API credentials)",
+			"command": "TF_ACC=1 go test ./... -timeout 30m",
+			"workingDirectory": ".",
+			"requiresEnvironment": [
+				"APP_STORE_CONNECT_ISSUER_ID",
+				"APP_STORE_CONNECT_KEY_ID",
+				"APP_STORE_CONNECT_PRIVATE_KEY"
+			]
+		},
+		{
+			"name": "format_code",
+			"description": "Format Go code according to standards",
+			"command": "make fmt",
+			"workingDirectory": "."
+		},
+		{
+			"name": "lint_code",
+			"description": "Run linting checks on the codebase",
+			"command": "make lint",
+			"workingDirectory": "."
+		},
+		{
+			"name": "generate_docs",
+			"description": "Generate provider documentation from templates",
+			"command": "make generate",
+			"workingDirectory": ".",
+			"requiresTools": ["terraform"]
+		},
+		{
+			"name": "validate_pass_type_id",
+			"description": "Validate a Pass Type ID format",
+			"type": "function",
+			"parameters": {
+				"identifier": {
+					"type": "string",
+					"description": "Pass Type identifier to validate (e.g., pass.com.example.membership)"
+				}
+			},
+			"implementation": "internal/provider/pass_type_id_resource.go:isValidPassTypeIdentifier"
+		},
+		{
+			"name": "list_certificate_types",
+			"description": "List all supported certificate types",
+			"type": "constant",
+			"values": [
+				"IOS_DEVELOPMENT",
+				"IOS_DISTRIBUTION",
+				"MAC_APP_DEVELOPMENT",
+				"MAC_APP_DISTRIBUTION",
+				"MAC_INSTALLER_DISTRIBUTION",
+				"PASS_TYPE_ID",
+				"PASS_TYPE_ID_WITH_NFC",
+				"DEVELOPER_ID_KEXT",
+				"DEVELOPER_ID_APPLICATION",
+				"DEVELOPMENT_PUSH_SSL",
+				"PRODUCTION_PUSH_SSL",
+				"PUSH_SSL"
+			]
+		},
+		{
+			"name": "check_test_coverage",
+			"description": "Generate test coverage report",
+			"command": "go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out",
+			"workingDirectory": "."
+		}
+	],
+	"contextFiles": [
+		{
+			"path": "CLAUDE.md",
+			"description": "Main context file with provider overview and guidelines"
+		},
+		{
+			"path": ".ai/provider-context.md",
+			"description": "Quick reference for AI assistants"
+		},
+		{
+			"path": "CONTRIBUTING.md",
+			"description": "Contribution guidelines and development workflow"
+		}
+	],
+	"codePatterns": {
+		"resourceFiles": "internal/provider/*_resource.go",
+		"dataSourceFiles": "internal/provider/*_data_source.go",
+		"testFiles": "internal/provider/*_test.go",
+		"exampleFiles": "examples/**/*.tf",
+		"documentationTemplates": "templates/**/*.tmpl"
+	},
+	"commonTasks": [
+		{
+			"name": "Add new resource",
+			"steps": [
+				"Create types file: internal/provider/<name>_types.go",
+				"Create resource file: internal/provider/<name>_resource.go",
+				"Create test file: internal/provider/<name>_resource_test.go",
+				"Register in provider.go",
+				"Create documentation template: templates/resources/<name>.md.tmpl",
+				"Create example: examples/resources/appleappstoreconnect_<name>/resource.tf",
+				"Run make generate",
+				"Run make lint"
+			]
+		},
+		{
+			"name": "Debug API issue",
+			"steps": [
+				"Add tflog.Debug statements",
+				"Check JWT token expiration",
+				"Verify API request format",
+				"Check response parsing",
+				"Run with TF_LOG=DEBUG"
+			]
+		}
+	]
+}

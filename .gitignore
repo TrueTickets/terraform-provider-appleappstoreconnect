@@ -28,6 +28,13 @@ website/node_modules
 # Claude AI settings
 .claude/
 
+# Built binary
+terraform-provider-appleappstoreconnect
+
+# Shell files
+*.in
+*.out
+
 website/vendor
 
 # Test exclusions

@@ -1,0 +1,3 @@
+#!/bin/bash
+# Wrapper script to use OpenTofu instead of Terraform
+exec tofu "$@"

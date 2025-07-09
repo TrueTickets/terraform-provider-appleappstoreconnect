@@ -47,7 +47,7 @@ resource "appleappstoreconnect_pass_type_id" "test" {
 resource "appleappstoreconnect_certificate" "test" {
   certificate_type = %[1]q
   csr_content     = %[2]q
-  
+
   relationships {
     pass_type_id = appleappstoreconnect_pass_type_id.test.id
   }
