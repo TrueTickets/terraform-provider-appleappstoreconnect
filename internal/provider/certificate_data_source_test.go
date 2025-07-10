@@ -51,7 +51,7 @@ resource "appleappstoreconnect_certificate" "test" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = "` + testCSRContent + `"
 
-  relationships {
+  relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.test.id
   }
 }
@@ -73,7 +73,7 @@ resource "appleappstoreconnect_certificate" "test" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = "` + testCSRContent + `"
 
-  relationships {
+  relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.test.id
   }
 }

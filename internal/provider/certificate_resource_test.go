@@ -24,6 +24,16 @@ func TestAccCertificateResource(t *testing.T) {
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_certificate.test", "certificate_content"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_certificate.test", "serial_number"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_certificate.test", "expiration_date"),
+					// Test default recreate_threshold (30 days = 2592000 seconds)
+					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "recreate_threshold", "2592000"),
+				),
+			},
+			// Test with custom recreate_threshold
+			{
+				Config: testAccCertificateResourceConfigWithThreshold("PASS_TYPE_ID", testCSRContent, 5184000),
+				Check: resource.ComposeAggregateTestCheckFunc(
+					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "certificate_type", "PASS_TYPE_ID"),
+					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "recreate_threshold", "5184000"),
 				),
 			},
 			// ImportState testing
@@ -48,11 +58,30 @@ resource "appleappstoreconnect_certificate" "test" {
   certificate_type = %[1]q
   csr_content     = %[2]q
 
-  relationships {
+  relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.test.id
   }
 }
 `, certType, csrContent)
+}
+
+func testAccCertificateResourceConfigWithThreshold(certType, csrContent string, threshold int) string {
+	return fmt.Sprintf(`
+resource "appleappstoreconnect_pass_type_id" "test" {
+  identifier  = "pass.com.example.test"
+  description = "Test Pass Type"
+}
+
+resource "appleappstoreconnect_certificate" "test" {
+  certificate_type = %[1]q
+  csr_content     = %[2]q
+  recreate_threshold = %[3]d
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.test.id
+  }
+}
+`, certType, csrContent, threshold)
 }
 
 // testCSRContent is a sample CSR for testing purposes
