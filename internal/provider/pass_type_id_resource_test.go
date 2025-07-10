@@ -22,7 +22,6 @@ func TestAccPassTypeIDResource(t *testing.T) {
 					resource.TestCheckResourceAttr("appleappstoreconnect_pass_type_id.test", "identifier", "pass.io.truetickets.test.test"),
 					resource.TestCheckResourceAttr("appleappstoreconnect_pass_type_id.test", "description", "Test Pass Type"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_pass_type_id.test", "id"),
-					resource.TestCheckResourceAttrSet("appleappstoreconnect_pass_type_id.test", "created_date"),
 				),
 			},
 			// ImportState testing

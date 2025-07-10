@@ -143,8 +143,8 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 
 		// Parse the response
-		var passTypeIDResp PassTypeIDResponse
-		if err := json.Unmarshal(apiResp.Data, &passTypeIDResp); err != nil {
+		var passTypeID PassTypeID
+		if err := json.Unmarshal(apiResp.Data, &passTypeID); err != nil {
 			resp.Diagnostics.AddError(
 				"Parse Error",
 				fmt.Sprintf("Unable to parse Pass Type ID response, got error: %s", err),
@@ -153,7 +153,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 
 		// Update the model with the response data
-		d.updateModel(&data, &passTypeIDResp.Data)
+		d.updateModel(&data, &passTypeID)
 
 	} else if !data.Filter.IsNull() {
 		// Extract filter criteria
@@ -183,9 +183,9 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			return
 		}
 
-		// Parse the response
-		var passTypeIDsResp PassTypeIDsResponse
-		if err := json.Unmarshal(apiResp.Data, &passTypeIDsResp); err != nil {
+		// Parse the response - the API returns an array directly in the data field
+		var passTypeIDs []PassTypeID
+		if err := json.Unmarshal(apiResp.Data, &passTypeIDs); err != nil {
 			resp.Diagnostics.AddError(
 				"Parse Error",
 				fmt.Sprintf("Unable to parse Pass Type IDs response, got error: %s", err),
@@ -194,7 +194,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 
 		// Check if we found exactly one result
-		if len(passTypeIDsResp.Data) == 0 {
+		if len(passTypeIDs) == 0 {
 			resp.Diagnostics.AddError(
 				"Not Found",
 				fmt.Sprintf("No Pass Type ID found with identifier '%s'", filter.Identifier.ValueString()),
@@ -202,7 +202,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			return
 		}
 
-		if len(passTypeIDsResp.Data) > 1 {
+		if len(passTypeIDs) > 1 {
 			resp.Diagnostics.AddError(
 				"Multiple Results",
 				fmt.Sprintf("Multiple Pass Type IDs found with identifier '%s'", filter.Identifier.ValueString()),
@@ -211,7 +211,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		}
 
 		// Update the model with the first (and only) result
-		d.updateModel(&data, &passTypeIDsResp.Data[0])
+		d.updateModel(&data, &passTypeIDs[0])
 	}
 
 	// Save data into Terraform state
