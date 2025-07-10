@@ -1,14 +1,8 @@
-# Copyright (c) HashiCorp, Inc.
-
 terraform {
   required_providers {
     appleappstoreconnect = {
       source  = "truetickets/appleappstoreconnect"
       version = "~> 0.0"
-    }
-    corefunc = {
-      source  = "northwood-labs/corefunc"
-      version = "~> 1.0"
     }
     tls = {
       source  = "hashicorp/tls"
@@ -17,15 +11,20 @@ terraform {
   }
 }
 
-# Configure the provider using environment variables:
-# export APP_STORE_CONNECT_ISSUER_ID="your-issuer-id"
-# export APP_STORE_CONNECT_KEY_ID="your-key-id"
-# export APP_STORE_CONNECT_PRIVATE_KEY="$(cat /path/to/AuthKey.p8)"
-provider "appleappstoreconnect" {}
+provider "appleappstoreconnect" {
+  # These can also be set via environment variables:
+  # APP_STORE_CONNECT_ISSUER_ID
+  # APP_STORE_CONNECT_KEY_ID
+  # APP_STORE_CONNECT_PRIVATE_KEY
+
+  issuer_id   = var.app_store_connect_issuer_id
+  key_id      = var.app_store_connect_key_id
+  private_key = var.app_store_connect_private_key
+}
 
 # Create a Pass Type ID
 resource "appleappstoreconnect_pass_type_id" "tf_test" {
-  identifier  = "pass.io.truetickets.tf-test-2"
+  identifier  = "pass.io.truetickets.test.tf-test-2"
   description = "Terraform Test Pass Type ID"
 }
 

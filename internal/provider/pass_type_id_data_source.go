@@ -68,7 +68,7 @@ func (d *PassTypeIDDataSource) Schema(ctx context.Context, req datasource.Schema
 				},
 			},
 			"identifier": schema.StringAttribute{
-				MarkdownDescription: "The identifier for the Pass Type ID (e.g., 'pass.com.example.membership').",
+				MarkdownDescription: "The identifier for the Pass Type ID (e.g., 'pass.io.truetickets.test.membership').",
 				Computed:            true,
 			},
 			"description": schema.StringAttribute{
@@ -84,7 +84,7 @@ func (d *PassTypeIDDataSource) Schema(ctx context.Context, req datasource.Schema
 				Optional:            true,
 				Attributes: map[string]schema.Attribute{
 					"identifier": schema.StringAttribute{
-						MarkdownDescription: "The identifier to search for (e.g., 'pass.com.example.membership').",
+						MarkdownDescription: "The identifier to search for (e.g., 'pass.io.truetickets.test.membership').",
 						Required:            true,
 					},
 				},

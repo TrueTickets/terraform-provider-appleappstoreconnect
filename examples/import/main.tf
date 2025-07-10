@@ -16,7 +16,7 @@ provider "appleappstoreconnect" {
 # First, use data sources to discover existing resources
 data "appleappstoreconnect_pass_type_id" "existing" {
   filter {
-    identifier = "pass.com.example.existing"
+    identifier = "pass.io.truetickets.test.existing"
   }
 }
 
@@ -42,7 +42,7 @@ output "discovered_certificates" {
 # After discovering resources, you can import them:
 #
 # resource "appleappstoreconnect_pass_type_id" "imported" {
-#   identifier  = "pass.com.example.existing"
+#   identifier  = "pass.io.truetickets.test.existing"
 #   description = "Imported Pass Type"
 # }
 #

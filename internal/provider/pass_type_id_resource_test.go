@@ -17,9 +17,9 @@ func TestAccPassTypeIDResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccPassTypeIDResourceConfig("pass.com.example.test", "Test Pass Type"),
+				Config: testAccPassTypeIDResourceConfig("pass.io.truetickets.test.test", "Test Pass Type"),
 				Check: resource.ComposeAggregateTestCheckFunc(
-					resource.TestCheckResourceAttr("appleappstoreconnect_pass_type_id.test", "identifier", "pass.com.example.test"),
+					resource.TestCheckResourceAttr("appleappstoreconnect_pass_type_id.test", "identifier", "pass.io.truetickets.test.test"),
 					resource.TestCheckResourceAttr("appleappstoreconnect_pass_type_id.test", "description", "Test Pass Type"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_pass_type_id.test", "id"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_pass_type_id.test", "created_date"),
@@ -52,12 +52,12 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 	}{
 		{
 			name:       "valid pass type identifier",
-			identifier: "pass.com.example.membership",
+			identifier: "pass.io.truetickets.test.membership",
 			want:       true,
 		},
 		{
 			name:       "valid pass type identifier with multiple segments",
-			identifier: "pass.com.example.app.membership",
+			identifier: "pass.io.truetickets.test.app.membership",
 			want:       true,
 		},
 		{
@@ -72,12 +72,12 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 		},
 		{
 			name:       "invalid - missing pass prefix",
-			identifier: "com.example.membership",
+			identifier: "io.truetickets.test.membership",
 			want:       false,
 		},
 		{
 			name:       "invalid - wrong prefix",
-			identifier: "app.com.example.membership",
+			identifier: "app.io.truetickets.test.membership",
 			want:       false,
 		},
 		{
@@ -97,7 +97,7 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 		},
 		{
 			name:       "invalid - special characters",
-			identifier: "pass.com.example.membership!",
+			identifier: "pass.io.truetickets.test.membership!",
 			want:       false,
 		},
 		{
@@ -107,12 +107,12 @@ func TestIsValidPassTypeIdentifier(t *testing.T) {
 		},
 		{
 			name:       "invalid - dash at end of segment",
-			identifier: "pass.com.example-.membership",
+			identifier: "pass.io.truetickets.test-.membership",
 			want:       false,
 		},
 		{
 			name:       "invalid - consecutive dashes",
-			identifier: "pass.com.example--test.membership",
+			identifier: "pass.io.truetickets.test--test.membership",
 			want:       true, // consecutive dashes are actually valid in domain names
 		},
 	}

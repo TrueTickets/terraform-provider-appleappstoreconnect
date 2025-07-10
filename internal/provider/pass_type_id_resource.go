@@ -58,7 +58,7 @@ func (r *PassTypeIDResource) Schema(ctx context.Context, req resource.SchemaRequ
 				},
 			},
 			"identifier": schema.StringAttribute{
-				MarkdownDescription: "The identifier for the Pass Type ID (e.g., 'pass.com.example.membership'). This must be unique and follow reverse-DNS format.",
+				MarkdownDescription: "The identifier for the Pass Type ID (e.g., 'pass.io.truetickets.test.membership'). This must be unique and follow reverse-DNS format.",
 				Required:            true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
@@ -111,7 +111,7 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 		resp.Diagnostics.AddAttributeError(
 			path.Root("identifier"),
 			"Invalid Pass Type Identifier",
-			"The identifier must follow reverse-DNS format (e.g., 'pass.com.example.membership').",
+			"The identifier must follow reverse-DNS format (e.g., 'pass.io.truetickets.test.membership').",
 		)
 		return
 	}

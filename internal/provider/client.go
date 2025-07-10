@@ -273,6 +273,16 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 
 	// Parse response
 	var resp Response
+	// Handle empty responses (common for DELETE operations)
+	if len(respBody) == 0 {
+		// For successful DELETE operations, return empty response
+		if httpResp.StatusCode >= 200 && httpResp.StatusCode < 300 {
+			return &resp, nil
+		}
+		// For error responses that are empty, return generic error
+		return nil, fmt.Errorf("API error (status %d): empty response", httpResp.StatusCode)
+	}
+
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		// If we can't parse as a standard response, check if it's an error
 		if httpResp.StatusCode >= 400 {

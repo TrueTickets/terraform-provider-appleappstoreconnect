@@ -28,7 +28,7 @@ data "appleappstoreconnect_pass_type_id" "example" {
 # Find Pass Type ID by identifier
 data "appleappstoreconnect_pass_type_id" "example" {
   filter {
-    identifier = "pass.com.example.membership"
+    identifier = "pass.io.truetickets.test.membership"
   }
 }
 
@@ -44,7 +44,7 @@ output "pass_type_id" {
 # Find existing Pass Type ID
 data "appleappstoreconnect_pass_type_id" "existing" {
   filter {
-    identifier = "pass.com.example.membership"
+    identifier = "pass.io.truetickets.test.membership"
   }
 }
 
@@ -74,7 +74,7 @@ resource "appleappstoreconnect_certificate" "cert" {
 - `created_date` (String) The date when the Pass Type ID was created.
 - `description` (String) The description of the Pass Type ID.
 - `identifier` (String) The identifier for the Pass Type ID (e.g.,
-  'pass.com.example.membership').
+  'pass.io.truetickets.test.membership').
 
 <a id="nestedatt--filter"></a>
 
@@ -83,4 +83,4 @@ resource "appleappstoreconnect_certificate" "cert" {
 Required:
 
 - `identifier` (String) The identifier to search for (e.g.,
-  'pass.com.example.membership').
+  'pass.io.truetickets.test.membership').

@@ -123,7 +123,7 @@ func TestClient_Do(t *testing.T) {
 					"type": "passTypeIds",
 					"id":   "test-id",
 					"attributes": map[string]interface{}{
-						"passTypeIdentifier": "pass.com.example.test",
+						"passTypeIdentifier": "pass.io.truetickets.test.test",
 						"name":               "Test Pass",
 						"description":        "Test Description",
 					},
@@ -212,7 +212,7 @@ func TestClient_Do(t *testing.T) {
 			Method:   http.MethodGet,
 			Endpoint: "/passTypeIds",
 			Query: map[string]string{
-				"filter[identifier]": "pass.com.example.test",
+				"filter[identifier]": "pass.io.truetickets.test.test",
 				"include":            "certificates",
 			},
 		}
@@ -233,7 +233,7 @@ func TestClient_Do(t *testing.T) {
 			"data": map[string]interface{}{
 				"type": "passTypeIds",
 				"attributes": map[string]interface{}{
-					"passTypeIdentifier": "pass.com.example.new",
+					"passTypeIdentifier": "pass.io.truetickets.test.new",
 					"name":               "New Pass",
 				},
 			},

@@ -72,7 +72,7 @@ export APP_STORE_CONNECT_PRIVATE_KEY="$(cat path/to/your/private_key.p8)"
 
 ```hcl
 resource "appleappstoreconnect_pass_type_id" "membership" {
-  identifier  = "pass.com.example.membership"
+  identifier  = "pass.io.truetickets.test.membership"
   description = "Membership Pass"
 }
 ```

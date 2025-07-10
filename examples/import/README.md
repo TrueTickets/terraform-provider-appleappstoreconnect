@@ -34,7 +34,7 @@ terraform import appleappstoreconnect_pass_type_id.imported XXXXXXXXXX
 ```
 
 Where `XXXXXXXXXX` is the ID of the Pass Type ID (not the identifier
-like `pass.com.example`).
+like `pass.io.truetickets.test`).
 
 ### Import a Certificate
 
@@ -59,7 +59,7 @@ resource configuration matches the actual state.
 
 1. **Pass Type ID Import**: The ID to use for import is the App Store
    Connect resource ID (like `6MXXXXXXXX`), not the pass identifier
-   (like `pass.com.example.mypass`).
+   (like `pass.io.truetickets.test.mypass`).
 
 2. **Certificate Import**:
 

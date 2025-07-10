@@ -22,7 +22,7 @@ Apple Wallet pass development.
 - Manages Pass Type IDs required for Apple Wallet passes
 - Attributes:
     - `identifier` (required): Reverse-DNS format (e.g.,
-      `pass.com.example.membership`)
+      `pass.io.truetickets.test.membership`)
     - `description` (required): Human-readable description
     - `id` (computed): API resource ID
     - `created_date` (computed): Creation timestamp

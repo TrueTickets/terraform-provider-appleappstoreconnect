@@ -38,7 +38,7 @@ Connect Terraform provider.
 
 ## What This Creates
 
-- A Pass Type ID with identifier `pass.com.example.mypass`
+- A Pass Type ID with identifier `pass.io.truetickets.test.mypass`
 - A certificate for signing passes with that Pass Type ID
 
 ## Next Steps

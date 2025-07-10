@@ -25,7 +25,7 @@ data "appleappstoreconnect_pass_type_id" "example" {
 # Find Pass Type ID by identifier
 data "appleappstoreconnect_pass_type_id" "example" {
   filter {
-    identifier = "pass.com.example.membership"
+    identifier = "pass.io.truetickets.test.membership"
   }
 }
 
@@ -41,7 +41,7 @@ output "pass_type_id" {
 # Find existing Pass Type ID
 data "appleappstoreconnect_pass_type_id" "existing" {
   filter {
-    identifier = "pass.com.example.membership"
+    identifier = "pass.io.truetickets.test.membership"
   }
 }
 

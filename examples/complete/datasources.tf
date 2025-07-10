@@ -4,8 +4,8 @@
 
 # Find a specific Pass Type ID by identifier
 data "appleappstoreconnect_pass_type_id" "existing_membership" {
-  filter {
-    identifier = "pass.com.example.membership"
+  filter = {
+    identifier = "pass.io.truetickets.test.membership"
   }
 
   depends_on = [appleappstoreconnect_pass_type_id.membership]
@@ -13,33 +13,37 @@ data "appleappstoreconnect_pass_type_id" "existing_membership" {
 
 # Find all Pass Type certificates
 data "appleappstoreconnect_certificates" "all_pass_certs" {
-  filter {
+  filter = {
     certificate_type = "PASS_TYPE_ID"
   }
 
   depends_on = [
-    appleappstoreconnect_certificate.membership_cert,
-    appleappstoreconnect_certificate.loyalty_cert
+    appleappstoreconnect_certificate.membership,
+    appleappstoreconnect_certificate.loyalty,
   ]
 }
 
 # Find all NFC-enabled Pass Type certificates
 data "appleappstoreconnect_certificates" "nfc_pass_certs" {
-  filter {
+  filter = {
     certificate_type = "PASS_TYPE_ID_WITH_NFC"
   }
 
-  depends_on = [appleappstoreconnect_certificate.event_ticket_cert]
+  depends_on = [
+    appleappstoreconnect_certificate.event_ticket,
+  ]
 }
 
 # Find a specific certificate by its serial number
-data "appleappstoreconnect_certificate" "membership_cert_lookup" {
-  filter {
+data "appleappstoreconnect_certificate" "membership_lookup" {
+  filter = {
     certificate_type = "PASS_TYPE_ID"
-    serial_number    = appleappstoreconnect_certificate.membership_cert.serial_number
+    serial_number    = appleappstoreconnect_certificate.membership.serial_number
   }
 
-  depends_on = [appleappstoreconnect_certificate.membership_cert]
+  depends_on = [
+    appleappstoreconnect_certificate.membership,
+  ]
 }
 
 # Output data source results
@@ -49,6 +53,6 @@ output "data_source_results" {
     existing_membership_id  = data.appleappstoreconnect_pass_type_id.existing_membership.id
     total_pass_certificates = length(data.appleappstoreconnect_certificates.all_pass_certs.certificates)
     total_nfc_certificates  = length(data.appleappstoreconnect_certificates.nfc_pass_certs.certificates)
-    membership_cert_found   = data.appleappstoreconnect_certificate.membership_cert_lookup.id == appleappstoreconnect_certificate.membership_cert.id
+    membership_cert_found   = data.appleappstoreconnect_certificate.membership_lookup.id == appleappstoreconnect_certificate.membership.id
   }
 }

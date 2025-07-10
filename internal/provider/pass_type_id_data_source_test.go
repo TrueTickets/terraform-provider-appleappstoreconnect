@@ -19,7 +19,7 @@ func TestAccPassTypeIDDataSource(t *testing.T) {
 				Config: testAccPassTypeIDDataSourceConfigByID(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_pass_type_id.test", "id"),
-					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "identifier", "pass.com.example.test"),
+					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "identifier", "pass.io.truetickets.test.test"),
 					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "description", "Test Pass Type"),
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_pass_type_id.test", "created_date"),
 				),
@@ -29,7 +29,7 @@ func TestAccPassTypeIDDataSource(t *testing.T) {
 				Config: testAccPassTypeIDDataSourceConfigByFilter(),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_pass_type_id.test", "id"),
-					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "identifier", "pass.com.example.test"),
+					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "identifier", "pass.io.truetickets.test.test"),
 					resource.TestCheckResourceAttr("data.appleappstoreconnect_pass_type_id.test", "description", "Test Pass Type"),
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_pass_type_id.test", "created_date"),
 				),
@@ -41,7 +41,7 @@ func TestAccPassTypeIDDataSource(t *testing.T) {
 func testAccPassTypeIDDataSourceConfigByID() string {
 	return `
 resource "appleappstoreconnect_pass_type_id" "test" {
-  identifier  = "pass.com.example.test"
+  identifier  = "pass.io.truetickets.test.test"
   description = "Test Pass Type"
 }
 
@@ -54,7 +54,7 @@ data "appleappstoreconnect_pass_type_id" "test" {
 func testAccPassTypeIDDataSourceConfigByFilter() string {
 	return `
 resource "appleappstoreconnect_pass_type_id" "test" {
-  identifier  = "pass.com.example.test"
+  identifier  = "pass.io.truetickets.test.test"
   description = "Test Pass Type"
 }
 

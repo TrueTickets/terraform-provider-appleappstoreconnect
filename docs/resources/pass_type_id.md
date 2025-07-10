@@ -20,7 +20,7 @@ event tickets, coupons) and must follow Apple's reverse-DNS format.
 
 ```hcl
 resource "appleappstoreconnect_pass_type_id" "example" {
-  identifier  = "pass.com.example.membership"
+  identifier  = "pass.io.truetickets.test.membership"
   description = "Membership Pass"
 }
 
@@ -33,17 +33,17 @@ output "pass_type_id" {
 
 ```hcl
 resource "appleappstoreconnect_pass_type_id" "membership" {
-  identifier  = "pass.com.example.membership"
+  identifier  = "pass.io.truetickets.test.membership"
   description = "Membership Cards"
 }
 
 resource "appleappstoreconnect_pass_type_id" "loyalty" {
-  identifier  = "pass.com.example.loyalty"
+  identifier  = "pass.io.truetickets.test.loyalty"
   description = "Loyalty Program Cards"
 }
 
 resource "appleappstoreconnect_pass_type_id" "event_ticket" {
-  identifier  = "pass.com.example.eventticket"
+  identifier  = "pass.io.truetickets.test.eventticket"
   description = "Event Tickets"
 }
 ```
@@ -56,7 +56,7 @@ resource "appleappstoreconnect_pass_type_id" "event_ticket" {
 
 - `description` (String) A description of the Pass Type ID.
 - `identifier` (String) The identifier for the Pass Type ID (e.g.,
-  'pass.com.example.membership'). This must be unique and follow
+  'pass.io.truetickets.test.membership'). This must be unique and follow
   reverse-DNS format.
 
 ### Read-Only
@@ -73,4 +73,4 @@ terraform import appleappstoreconnect_pass_type_id.example XXXXXXXXXX
 ```
 
 Where `XXXXXXXXXX` is the Pass Type ID from App Store Connect (not the
-identifier like `pass.com.example`).
+identifier like `pass.io.truetickets.test`).

@@ -52,7 +52,7 @@
 			"parameters": {
 				"identifier": {
 					"type": "string",
-					"description": "Pass Type identifier to validate (e.g., pass.com.example.membership)"
+					"description": "Pass Type identifier to validate (e.g., pass.io.truetickets.test.membership)"
 				}
 			},
 			"implementation": "internal/provider/pass_type_id_resource.go:isValidPassTypeIdentifier"

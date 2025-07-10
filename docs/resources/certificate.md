@@ -22,7 +22,7 @@ before expiration using the `recreate_threshold` argument.
 
 ```hcl
 resource "appleappstoreconnect_pass_type_id" "example" {
-  identifier  = "pass.com.example.membership"
+  identifier  = "pass.io.truetickets.test.membership"
   description = "Example Pass"
 }
 
@@ -50,7 +50,7 @@ output "certificate_info" {
 
 ```hcl
 resource "appleappstoreconnect_pass_type_id" "nfc_pass" {
-  identifier  = "pass.com.example.nfc"
+  identifier  = "pass.io.truetickets.test.nfc"
   description = "NFC-Enabled Pass"
 }
 

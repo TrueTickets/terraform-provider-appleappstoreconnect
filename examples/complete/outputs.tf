@@ -1,5 +1,3 @@
-# Copyright (c) HashiCorp, Inc.
-
 output "pass_type_ids" {
   description = "Map of Pass Type IDs"
   value = {
@@ -22,17 +20,17 @@ output "certificate_info" {
   description = "Certificate information"
   value = {
     membership = {
-      serial_number   = appleappstoreconnect_certificate.membership_cert.serial_number
-      expiration_date = appleappstoreconnect_certificate.membership_cert.expiration_date
+      serial_number   = appleappstoreconnect_certificate.membership.serial_number
+      expiration_date = appleappstoreconnect_certificate.membership.expiration_date
     }
     loyalty = {
-      serial_number   = appleappstoreconnect_certificate.loyalty_cert.serial_number
-      expiration_date = appleappstoreconnect_certificate.loyalty_cert.expiration_date
+      serial_number   = appleappstoreconnect_certificate.loyalty.serial_number
+      expiration_date = appleappstoreconnect_certificate.loyalty.expiration_date
     }
     event_ticket = {
-      serial_number   = appleappstoreconnect_certificate.event_ticket_cert.serial_number
-      expiration_date = appleappstoreconnect_certificate.event_ticket_cert.expiration_date
-      has_nfc         = appleappstoreconnect_certificate.event_ticket_cert.certificate_type == "PASS_TYPE_ID_WITH_NFC"
+      serial_number   = appleappstoreconnect_certificate.event_ticket.serial_number
+      expiration_date = appleappstoreconnect_certificate.event_ticket.expiration_date
+      has_nfc         = appleappstoreconnect_certificate.event_ticket.certificate_type == "PASS_TYPE_ID_WITH_NFC"
     }
   }
   sensitive = false

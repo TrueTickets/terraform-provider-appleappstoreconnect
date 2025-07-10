@@ -141,6 +141,8 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 				Computed:            true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.UseStateForUnknown(),
+					int64planmodifier.RequiresReplace(),
+					NewRecreateThresholdDefaultPlanModifier(),
 				},
 				Validators: []validator.Int64{
 					int64validator.AtLeast(0),
@@ -281,10 +283,11 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		data.ExpirationDate = types.StringNull()
 	}
 
-	// Set default recreate threshold if not provided
-	if data.RecreateThreshold.IsNull() {
+	// Set default recreate threshold if not provided in plan
+	if data.RecreateThreshold.IsNull() || data.RecreateThreshold.IsUnknown() {
 		data.RecreateThreshold = types.Int64Value(2592000) // 30 days
 	}
+	// Note: recreate_threshold is preserved from plan as it's not returned by Apple API
 
 	tflog.Trace(ctx, "Created Certificate", map[string]interface{}{
 		"id": data.ID.ValueString(),
@@ -496,5 +499,31 @@ func (m CertificateRecreateThresholdPlanModifier) PlanModifyString(ctx context.C
 			"threshold_seconds": thresholdSeconds,
 		})
 		resp.RequiresReplace = true
+	}
+}
+
+// RecreateThresholdDefaultPlanModifier sets a default value for recreate_threshold.
+type RecreateThresholdDefaultPlanModifier struct{}
+
+// NewRecreateThresholdDefaultPlanModifier creates a new instance of the default plan modifier.
+func NewRecreateThresholdDefaultPlanModifier() planmodifier.Int64 {
+	return RecreateThresholdDefaultPlanModifier{}
+}
+
+// Description returns a human-readable description of the plan modifier.
+func (m RecreateThresholdDefaultPlanModifier) Description(ctx context.Context) string {
+	return "Sets default value of 2592000 (30 days) when recreate_threshold is not specified."
+}
+
+// MarkdownDescription returns a markdown description of the plan modifier.
+func (m RecreateThresholdDefaultPlanModifier) MarkdownDescription(ctx context.Context) string {
+	return "Sets default value of 2592000 (30 days) when recreate_threshold is not specified."
+}
+
+// PlanModifyInt64 implements the plan modifier logic.
+func (m RecreateThresholdDefaultPlanModifier) PlanModifyInt64(ctx context.Context, req planmodifier.Int64Request, resp *planmodifier.Int64Response) {
+	// If the value is null or unknown, set the default
+	if req.ConfigValue.IsNull() {
+		resp.PlanValue = types.Int64Value(2592000) // 30 days
 	}
 }

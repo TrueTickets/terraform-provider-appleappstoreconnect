@@ -115,7 +115,8 @@ terraform destroy
 
 ## Important Notes
 
-- Pass Type identifiers must follow the format `pass.com.example.name`
+- Pass Type identifiers must follow the format
+  `pass.io.truetickets.test.name`
 - Certificates expire after one year and need to be renewed
 - NFC-enabled certificates (`PASS_TYPE_ID_WITH_NFC`) are required for
   passes that use NFC features

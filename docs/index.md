@@ -31,7 +31,7 @@ provider "appleappstoreconnect" {
 
 # Create a Pass Type ID
 resource "appleappstoreconnect_pass_type_id" "example" {
-  identifier  = "pass.com.example.membership"
+  identifier  = "pass.io.truetickets.test.membership"
   description = "Example Membership Pass"
 }
 
