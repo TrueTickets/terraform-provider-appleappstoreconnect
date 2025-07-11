@@ -183,7 +183,6 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 
 	// Build query parameters
 	query := make(map[string]string)
-	query["include"] = "passTypeId"
 	query["limit"] = "200" // Maximum allowed by API
 
 	// Extract filter criteria if present
@@ -220,9 +219,14 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	// Parse the response
-	var certsResp CertificatesResponse
-	if err := json.Unmarshal(apiResp.Data, &certsResp); err != nil {
+	// Parse the response - apiResp.Data contains just the array from the "data" field
+	var certificates []Certificate
+	if err := json.Unmarshal(apiResp.Data, &certificates); err != nil {
+		// Log the raw response for debugging
+		tflog.Error(ctx, "Failed to parse certificates response", map[string]interface{}{
+			"error":        err.Error(),
+			"raw_response": string(apiResp.Data),
+		})
 		resp.Diagnostics.AddError(
 			"Parse Error",
 			fmt.Sprintf("Unable to parse Certificates response, got error: %s", err),
@@ -239,7 +243,7 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 			return
 		}
 
-		for _, cert := range certsResp.Data {
+		for _, cert := range certificates {
 			// Apply display name filter if present
 			if !filter.DisplayName.IsNull() {
 				displayNameFilter := filter.DisplayName.ValueString()
@@ -263,7 +267,7 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 			filteredCerts = append(filteredCerts, cert)
 		}
 	} else {
-		filteredCerts = certsResp.Data
+		filteredCerts = certificates
 	}
 
 	// Convert certificates to list items

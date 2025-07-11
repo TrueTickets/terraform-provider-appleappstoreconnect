@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 	"time"
 
@@ -200,20 +201,15 @@ type Paging struct {
 // Do performs an API request.
 func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	// Build URL
-	url := c.baseURL + req.Endpoint
+	urlStr := c.baseURL + req.Endpoint
 
 	// Add query parameters
 	if len(req.Query) > 0 {
-		first := true
+		params := url.Values{}
 		for key, value := range req.Query {
-			if first {
-				url += "?"
-				first = false
-			} else {
-				url += "&"
-			}
-			url += fmt.Sprintf("%s=%s", key, value)
+			params.Add(key, value)
 		}
+		urlStr += "?" + params.Encode()
 	}
 
 	// Marshal body if present
@@ -231,7 +227,7 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	}
 
 	// Create HTTP request
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, url, bodyReader)
+	httpReq, err := http.NewRequestWithContext(ctx, req.Method, urlStr, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -250,7 +246,7 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	tflog.Debug(ctx, "Making API request", map[string]interface{}{
 		"method":   req.Method,
 		"endpoint": req.Endpoint,
-		"url":      url,
+		"url":      urlStr,
 	})
 
 	// Perform request
