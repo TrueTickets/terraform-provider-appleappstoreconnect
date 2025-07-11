@@ -29,7 +29,7 @@ func main() {
 
 	opts := providerserver.ServeOpts{
 		// Provider address for Apple App Store Connect
-		Address: "registry.terraform.io.truetickets.test/appleappstoreconnect",
+		Address: "registry.opentofu.org/truetickets/appleappstoreconnect",
 		Debug:   debug,
 	}
 
