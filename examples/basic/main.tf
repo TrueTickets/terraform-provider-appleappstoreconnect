@@ -62,6 +62,11 @@ data "tls_certificate" "tf_test" {
   content = base64decode(appleappstoreconnect_certificate.tf_test.certificate_content_pem)
 }
 
+resource "random_password" "tf_test" {
+  length  = 16
+  special = true
+}
+
 # Output the certificate
 output "certificate_content" {
   value     = appleappstoreconnect_certificate.tf_test.certificate_content
@@ -75,4 +80,18 @@ output "certificate_content_pem" {
 
 output "certificate_expiration" {
   value = appleappstoreconnect_certificate.tf_test.expiration_date
+}
+
+output "pkcs12_encoded" {
+  value = provider::appleappstoreconnect::encode_pkcs12(
+    base64decode(appleappstoreconnect_certificate.tf_test.certificate_content_pem),
+    tls_private_key.tf_test.private_key_pem,
+    random_password.tf_test.result
+  )
+  sensitive = true
+}
+
+output "pkcs12_password" {
+  value     = random_password.tf_test.result
+  sensitive = true
 }

@@ -9,6 +9,7 @@ import (
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
@@ -19,6 +20,7 @@ import (
 
 // Ensure AppleAppStoreConnectProvider satisfies various provider interfaces.
 var _ provider.Provider = &AppleAppStoreConnectProvider{}
+var _ provider.ProviderWithFunctions = &AppleAppStoreConnectProvider{}
 
 // AppleAppStoreConnectProvider defines the provider implementation.
 type AppleAppStoreConnectProvider struct {
@@ -193,6 +195,13 @@ func (p *AppleAppStoreConnectProvider) DataSources(ctx context.Context) []func()
 		NewPassTypeIDDataSource,
 		NewCertificateDataSource,
 		NewCertificatesDataSource,
+	}
+}
+
+func (p *AppleAppStoreConnectProvider) Functions(ctx context.Context) []func() function.Function {
+	return []func() function.Function{
+		NewEncodePKCS12Function,
+		NewDecodePKCS12Function,
 	}
 }
 
