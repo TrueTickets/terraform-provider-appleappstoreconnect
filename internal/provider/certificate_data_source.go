@@ -39,6 +39,7 @@ type CertificateDataSourceModel struct {
 	CertificateType       types.String `tfsdk:"certificate_type"`
 	CertificateContent    types.String `tfsdk:"certificate_content"`
 	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
+	CertificateExtensions types.Map    `tfsdk:"certificate_extensions"`
 	DisplayName           types.String `tfsdk:"display_name"`
 	Name                  types.String `tfsdk:"name"`
 	Platform              types.String `tfsdk:"platform"`
@@ -88,6 +89,11 @@ func (d *CertificateDataSource) Schema(ctx context.Context, req datasource.Schem
 				MarkdownDescription: "The certificate content in base64 encoded PEM format.",
 				Computed:            true,
 				Sensitive:           true,
+			},
+			"certificate_extensions": schema.MapAttribute{
+				MarkdownDescription: "A map of X509v3 certificate extensions. Keys are extension names or OIDs, values are hex-encoded extension data. For common extensions, human-readable parsed values are also provided with '_parsed' suffix.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"display_name": schema.StringAttribute{
 				MarkdownDescription: "The display name of the certificate.",
@@ -324,6 +330,33 @@ func (d *CertificateDataSource) updateModel(model *CertificateDataSourceModel, c
 		model.CertificateContentPEM = types.StringValue(pemContent)
 	} else {
 		model.CertificateContentPEM = types.StringNull()
+	}
+
+	// Extract certificate extensions
+	if cert.Attributes.CertificateContent != "" {
+		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Extension Parsing Error",
+				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+			)
+			return
+		}
+
+		// Convert map[string]string to types.Map
+		extensionValues := make(map[string]attr.Value)
+		for k, v := range extensions {
+			extensionValues[k] = types.StringValue(v)
+		}
+
+		extensionMap, diagnostics := types.MapValue(types.StringType, extensionValues)
+		resp.Diagnostics.Append(diagnostics...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		model.CertificateExtensions = extensionMap
+	} else {
+		model.CertificateExtensions = types.MapNull(types.StringType)
 	}
 
 	if cert.Attributes.ExpirationDate != nil {

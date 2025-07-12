@@ -47,6 +47,7 @@ type CertificateResourceModel struct {
 	CsrContent            types.String `tfsdk:"csr_content"`
 	CertificateContent    types.String `tfsdk:"certificate_content"`
 	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
+	CertificateExtensions types.Map    `tfsdk:"certificate_extensions"`
 	DisplayName           types.String `tfsdk:"display_name"`
 	Name                  types.String `tfsdk:"name"`
 	Platform              types.String `tfsdk:"platform"`
@@ -117,6 +118,11 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 				MarkdownDescription: "The certificate content in base64 encoded PEM format.",
 				Computed:            true,
 				Sensitive:           true,
+			},
+			"certificate_extensions": schema.MapAttribute{
+				MarkdownDescription: "A map of X509v3 certificate extensions. Keys are extension names or OIDs, values are hex-encoded extension data. For common extensions, human-readable parsed values are also provided with '_parsed' suffix.",
+				Computed:            true,
+				ElementType:         types.StringType,
 			},
 			"display_name": schema.StringAttribute{
 				MarkdownDescription: "The display name of the certificate.",
@@ -297,6 +303,33 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		data.CertificateContentPEM = types.StringNull()
 	}
 
+	// Extract certificate extensions
+	if cert.Attributes.CertificateContent != "" {
+		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Extension Parsing Error",
+				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+			)
+			return
+		}
+
+		// Convert map[string]string to types.Map
+		extensionValues := make(map[string]attr.Value)
+		for k, v := range extensions {
+			extensionValues[k] = types.StringValue(v)
+		}
+
+		extensionMap, diags := types.MapValue(types.StringType, extensionValues)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.CertificateExtensions = extensionMap
+	} else {
+		data.CertificateExtensions = types.MapNull(types.StringType)
+	}
+
 	if cert.Attributes.ExpirationDate != nil {
 		data.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
 	} else {
@@ -379,6 +412,33 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 		data.CertificateContentPEM = types.StringValue(pemContent)
 	} else {
 		data.CertificateContentPEM = types.StringNull()
+	}
+
+	// Extract certificate extensions
+	if cert.Attributes.CertificateContent != "" {
+		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Extension Parsing Error",
+				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+			)
+			return
+		}
+
+		// Convert map[string]string to types.Map
+		extensionValues := make(map[string]attr.Value)
+		for k, v := range extensions {
+			extensionValues[k] = types.StringValue(v)
+		}
+
+		extensionMap, diags := types.MapValue(types.StringType, extensionValues)
+		resp.Diagnostics.Append(diags...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+		data.CertificateExtensions = extensionMap
+	} else {
+		data.CertificateExtensions = types.MapNull(types.StringType)
 	}
 
 	if cert.Attributes.ExpirationDate != nil {
