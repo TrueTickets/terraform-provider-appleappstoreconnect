@@ -8,7 +8,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/asn1"
 	"encoding/base64"
 	"encoding/pem"
 	"math/big"
@@ -147,86 +146,49 @@ func createTestCertificate(t *testing.T) *x509.Certificate {
 	return cert
 }
 
-func TestExtractCertificateExtensions(t *testing.T) {
-	// Create a test certificate with known extensions
-	cert := createTestCertificate(t)
+func TestExtractCertificateCAIssuers(t *testing.T) {
+	// Create a test certificate with CA issuers
+	cert := createTestCertificateWithAIA(t)
 
 	// Encode the certificate to base64 DER format
 	base64DER := base64.StdEncoding.EncodeToString(cert.Raw)
 
-	// Extract extensions
-	extensions, err := extractCertificateExtensions(base64DER)
+	// Extract CA issuers
+	caIssuers, err := extractCertificateCAIssuers(base64DER)
 	if err != nil {
-		t.Fatalf("extractCertificateExtensions failed: %v", err)
+		t.Fatalf("extractCertificateCAIssuers failed: %v", err)
 	}
 
-	// Check that we got some extensions
-	if len(extensions) == 0 {
-		t.Error("Expected at least some extensions, got none")
+	// Check that we got the expected CA issuers
+	expectedIssuers := []string{
+		"http://ca.example.com/ca.crt",
+		"http://backup-ca.example.com/ca.crt",
 	}
 
-	// Check for specific extensions we know should be present
-	expectedExtensions := []string{
-		"keyUsage",
-		"extKeyUsage",
-		"subjectAltName",
-		"keyUsage_parsed",
-		"extKeyUsage_parsed",
-		"subjectAltName_parsed",
+	if len(caIssuers) != len(expectedIssuers) {
+		t.Errorf("Expected %d CA issuers, got %d", len(expectedIssuers), len(caIssuers))
 	}
 
-	for _, expectedExt := range expectedExtensions {
-		if _, exists := extensions[expectedExt]; !exists {
-			t.Errorf("Expected extension %s not found in extensions map", expectedExt)
+	for _, expected := range expectedIssuers {
+		found := false
+		for _, issuer := range caIssuers {
+			if issuer == expected {
+				found = true
+				break
+			}
 		}
-	}
-
-	// Verify parsed key usage contains expected values
-	if keyUsageParsed, exists := extensions["keyUsage_parsed"]; exists {
-		if !strings.Contains(keyUsageParsed, "Digital Signature") {
-			t.Error("Expected 'Digital Signature' in parsed key usage")
-		}
-		if !strings.Contains(keyUsageParsed, "Key Encipherment") {
-			t.Error("Expected 'Key Encipherment' in parsed key usage")
+		if !found {
+			t.Errorf("Expected CA issuer %s not found", expected)
 		}
 	}
 
-	// Verify parsed extended key usage contains expected values
-	if extKeyUsageParsed, exists := extensions["extKeyUsage_parsed"]; exists {
-		if !strings.Contains(extKeyUsageParsed, "Server Authentication") {
-			t.Error("Expected 'Server Authentication' in parsed extended key usage")
-		}
-		if !strings.Contains(extKeyUsageParsed, "Client Authentication") {
-			t.Error("Expected 'Client Authentication' in parsed extended key usage")
-		}
-	}
-
-	// Verify parsed SAN contains expected values
-	if sanParsed, exists := extensions["subjectAltName_parsed"]; exists {
-		if !strings.Contains(sanParsed, "DNS:localhost") {
-			t.Error("Expected 'DNS:localhost' in parsed SAN")
-		}
-		if !strings.Contains(sanParsed, "DNS:test.example.com") {
-			t.Error("Expected 'DNS:test.example.com' in parsed SAN")
-		}
-		if !strings.Contains(sanParsed, "email:test@example.com") {
-			t.Error("Expected 'email:test@example.com' in parsed SAN")
-		}
-		if !strings.Contains(sanParsed, "IP:127.0.0.1") {
-			t.Error("Expected 'IP:127.0.0.1' in parsed SAN")
-		}
-	}
-
-	t.Logf("Found %d extensions", len(extensions))
-	for k, v := range extensions {
-		t.Logf("Extension %s: %s", k, v)
-	}
+	t.Logf("Found %d CA issuers: %v", len(caIssuers), caIssuers)
 }
 
-func TestExtractCertificateExtensions_InvalidBase64(t *testing.T) {
+func TestExtractCertificateCAIssuers_InvalidBase64(t *testing.T) {
 	invalidBase64 := "not-valid-base64!"
 
-	_, err := extractCertificateExtensions(invalidBase64)
+	_, err := extractCertificateCAIssuers(invalidBase64)
 	if err == nil {
 		t.Error("Expected error for invalid base64, got nil")
 	}
@@ -235,11 +197,11 @@ func TestExtractCertificateExtensions_InvalidBase64(t *testing.T) {
 	}
 }
 
-func TestExtractCertificateExtensions_InvalidCertificate(t *testing.T) {
+func TestExtractCertificateCAIssuers_InvalidCertificate(t *testing.T) {
 	// Valid base64 but not a valid certificate
 	invalidCert := base64.StdEncoding.EncodeToString([]byte("not a certificate"))
 
-	_, err := extractCertificateExtensions(invalidCert)
+	_, err := extractCertificateCAIssuers(invalidCert)
 	if err == nil {
 		t.Error("Expected error for invalid certificate, got nil")
 	}
@@ -248,85 +210,22 @@ func TestExtractCertificateExtensions_InvalidCertificate(t *testing.T) {
 	}
 }
 
-func TestGetExtensionName(t *testing.T) {
-	tests := []struct {
-		oidParts []int
-		oidStr   string
-		expected string
-	}{
-		{[]int{2, 5, 29, 15}, "2.5.29.15", "keyUsage"},
-		{[]int{2, 5, 29, 37}, "2.5.29.37", "extKeyUsage"},
-		{[]int{2, 5, 29, 17}, "2.5.29.17", "subjectAltName"},
-		{[]int{2, 5, 29, 19}, "2.5.29.19", "basicConstraints"},
-		{[]int{1, 3, 6, 1, 5, 5, 7, 1, 1}, "1.3.6.1.5.5.7.1.1", "authorityInfoAccess"},
-		{[]int{1, 2, 3, 4, 5}, "1.2.3.4.5", ""}, // Unknown OID should return empty string
+func TestExtractCertificateCAIssuers_EmptyIssuers(t *testing.T) {
+	// Create a certificate without CA issuers
+	cert := createTestCertificate(t)
+
+	// Encode the certificate to base64 DER format
+	base64DER := base64.StdEncoding.EncodeToString(cert.Raw)
+
+	// Extract CA issuers
+	caIssuers, err := extractCertificateCAIssuers(base64DER)
+	if err != nil {
+		t.Fatalf("extractCertificateCAIssuers failed: %v", err)
 	}
 
-	for _, test := range tests {
-		oid := asn1.ObjectIdentifier(test.oidParts)
-
-		result := getExtensionName(oid)
-		if result != test.expected {
-			t.Errorf("getExtensionName(%s) = %s, expected %s", test.oidStr, result, test.expected)
-		}
-	}
-}
-
-func TestKeyUsageToString(t *testing.T) {
-	tests := []struct {
-		usage    x509.KeyUsage
-		expected []string
-	}{
-		{
-			x509.KeyUsageDigitalSignature,
-			[]string{"Digital Signature"},
-		},
-		{
-			x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
-			[]string{"Digital Signature", "Key Encipherment"},
-		},
-		{
-			x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-			[]string{"Certificate Sign", "CRL Sign"},
-		},
-	}
-
-	for _, test := range tests {
-		result := keyUsageToString(test.usage)
-		for _, expected := range test.expected {
-			if !strings.Contains(result, expected) {
-				t.Errorf("keyUsageToString(%d) = %s, expected to contain %s", test.usage, result, expected)
-			}
-		}
-	}
-}
-
-func TestExtKeyUsageToString(t *testing.T) {
-	tests := []struct {
-		usage    []x509.ExtKeyUsage
-		expected []string
-	}{
-		{
-			[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
-			[]string{"Server Authentication"},
-		},
-		{
-			[]x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
-			[]string{"Server Authentication", "Client Authentication"},
-		},
-		{
-			[]x509.ExtKeyUsage{x509.ExtKeyUsageCodeSigning, x509.ExtKeyUsageEmailProtection},
-			[]string{"Code Signing", "Email Protection"},
-		},
-	}
-
-	for _, test := range tests {
-		result := extKeyUsageToString(test.usage)
-		for _, expected := range test.expected {
-			if !strings.Contains(result, expected) {
-				t.Errorf("extKeyUsageToString(%v) = %s, expected to contain %s", test.usage, result, expected)
-			}
-		}
+	// Should return empty slice for certificate without CA issuers
+	if len(caIssuers) != 0 {
+		t.Errorf("Expected 0 CA issuers, got %d", len(caIssuers))
 	}
 }
 
@@ -374,56 +273,4 @@ func createTestCertificateWithAIA(t *testing.T) *x509.Certificate {
 	}
 
 	return cert
-}
-
-func TestExtractCertificateExtensions_WithAIA(t *testing.T) {
-	// Create a test certificate with AIA extension
-	cert := createTestCertificateWithAIA(t)
-
-	// Encode the certificate to base64 DER format
-	base64DER := base64.StdEncoding.EncodeToString(cert.Raw)
-
-	// Extract extensions
-	extensions, err := extractCertificateExtensions(base64DER)
-	if err != nil {
-		t.Fatalf("extractCertificateExtensions failed: %v", err)
-	}
-
-	// Check for Authority Information Access CA Issuers
-	if caIssuers, exists := extensions["authorityInfoAccess_caIssuers"]; exists {
-		if !strings.Contains(caIssuers, "http://ca.example.com/ca.crt") {
-			t.Error("Expected 'http://ca.example.com/ca.crt' in CA Issuers")
-		}
-		if !strings.Contains(caIssuers, "http://backup-ca.example.com/ca.crt") {
-			t.Error("Expected 'http://backup-ca.example.com/ca.crt' in CA Issuers")
-		}
-		t.Logf("CA Issuers: %s", caIssuers)
-	} else {
-		t.Error("Expected 'authorityInfoAccess_caIssuers' extension not found")
-	}
-
-	// Check for Authority Information Access OCSP
-	if ocsp, exists := extensions["authorityInfoAccess_ocsp"]; exists {
-		if !strings.Contains(ocsp, "http://ocsp.example.com") {
-			t.Error("Expected 'http://ocsp.example.com' in OCSP servers")
-		}
-		if !strings.Contains(ocsp, "http://ocsp-backup.example.com") {
-			t.Error("Expected 'http://ocsp-backup.example.com' in OCSP servers")
-		}
-		t.Logf("OCSP Servers: %s", ocsp)
-	} else {
-		t.Error("Expected 'authorityInfoAccess_ocsp' extension not found")
-	}
-
-	// Check that the raw authorityInfoAccess extension is also present
-	if _, exists := extensions["authorityInfoAccess"]; !exists {
-		t.Error("Expected raw 'authorityInfoAccess' extension not found")
-	}
-
-	t.Logf("Found %d extensions", len(extensions))
-	for k, v := range extensions {
-		if strings.Contains(k, "authorityInfoAccess") {
-			t.Logf("AIA Extension %s: %s", k, v)
-		}
-	}
 }

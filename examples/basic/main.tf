@@ -52,6 +52,10 @@ resource "appleappstoreconnect_certificate" "tf_test" {
   # Recreate the certificate 60 days before expiration (default is 30 days)
   recreate_threshold = 5184000 # 60 days in seconds
 
+  # Optional: provide private key and password for PKCS12 bundle generation
+  private_key_pem        = tls_private_key.tf_test.private_key_pem
+  pkcs12_bundle_password = "testpassword"
+
   relationships = {
     pass_type_id = appleappstoreconnect_pass_type_id.tf_test.id
   }
@@ -78,16 +82,12 @@ output "certificate_content_pem" {
   sensitive = true
 }
 
-output "certificate_expiration" {
-  value = appleappstoreconnect_certificate.tf_test.expiration_date
+output "certificate_ca_issuers" {
+  value = appleappstoreconnect_certificate.tf_test.certificate_ca_issuers
 }
 
-output "pkcs12_encoded" {
-  value = provider::appleappstoreconnect::encode_pkcs12(
-    base64decode(appleappstoreconnect_certificate.tf_test.certificate_content_pem),
-    tls_private_key.tf_test.private_key_pem,
-    random_password.tf_test.result
-  )
+output "pkcs12_bundle_content" {
+  value     = appleappstoreconnect_certificate.tf_test.pkcs12_bundle_content
   sensitive = true
 }
 

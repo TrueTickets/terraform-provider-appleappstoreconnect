@@ -199,10 +199,7 @@ func (p *AppleAppStoreConnectProvider) DataSources(ctx context.Context) []func()
 }
 
 func (p *AppleAppStoreConnectProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewEncodePKCS12Function,
-		NewDecodePKCS12Function,
-	}
+	return []func() function.Function{}
 }
 
 func New(version string) func() provider.Provider {

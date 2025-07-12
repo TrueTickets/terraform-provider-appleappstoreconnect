@@ -5,10 +5,15 @@ package provider
 
 import (
 	"context"
+	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"fmt"
 	"net/http"
 	"time"
+
+	"software.sslmate.com/src/go-pkcs12"
 
 	"github.com/hashicorp/terraform-plugin-framework-validators/int64validator"
 	"github.com/hashicorp/terraform-plugin-framework-validators/stringvalidator"
@@ -45,9 +50,10 @@ type CertificateResourceModel struct {
 	ID                    types.String `tfsdk:"id"`
 	CertificateType       types.String `tfsdk:"certificate_type"`
 	CsrContent            types.String `tfsdk:"csr_content"`
+	PrivateKeyPEM         types.String `tfsdk:"private_key_pem"`
 	CertificateContent    types.String `tfsdk:"certificate_content"`
 	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
-	CertificateExtensions types.Map    `tfsdk:"certificate_extensions"`
+	CertificateCAIssuers  types.List   `tfsdk:"certificate_ca_issuers"`
 	DisplayName           types.String `tfsdk:"display_name"`
 	Name                  types.String `tfsdk:"name"`
 	Platform              types.String `tfsdk:"platform"`
@@ -55,6 +61,8 @@ type CertificateResourceModel struct {
 	ExpirationDate        types.String `tfsdk:"expiration_date"`
 	RecreateThreshold     types.Int64  `tfsdk:"recreate_threshold"`
 	Relationships         types.Object `tfsdk:"relationships"`
+	PKCS12BundlePassword  types.String `tfsdk:"pkcs12_bundle_password"`
+	PKCS12BundleContent   types.String `tfsdk:"pkcs12_bundle_content"`
 }
 
 // CertificateRelationshipsModel describes the relationships data model.
@@ -109,6 +117,11 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 					stringplanmodifier.RequiresReplace(),
 				},
 			},
+			"private_key_pem": schema.StringAttribute{
+				MarkdownDescription: "The private key in PEM format. Only required if you want to generate a PKCS12 bundle. This is not sent to Apple's API and is only used locally for PKCS12 generation. Changes to this value do not require certificate replacement.",
+				Optional:            true,
+				Sensitive:           true,
+			},
 			"certificate_content": schema.StringAttribute{
 				MarkdownDescription: "The certificate content in base64 encoded DER format.",
 				Computed:            true,
@@ -119,8 +132,8 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 				Computed:            true,
 				Sensitive:           true,
 			},
-			"certificate_extensions": schema.MapAttribute{
-				MarkdownDescription: "A map of X509v3 certificate extensions. Keys are extension names or OIDs, values are hex-encoded extension data. For common extensions, human-readable parsed values are also provided with '_parsed' suffix.",
+			"certificate_ca_issuers": schema.ListAttribute{
+				MarkdownDescription: "A list of CA Issuer URIs from the Authority Information Access extension.",
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
@@ -173,6 +186,16 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 						Optional:            true,
 					},
 				},
+			},
+			"pkcs12_bundle_password": schema.StringAttribute{
+				MarkdownDescription: "Password to use for the PKCS12 bundle. When provided, a PKCS12 bundle will be generated and available in the `pkcs12_bundle_content` attribute. Changes to this value do not require certificate replacement.",
+				Optional:            true,
+				Sensitive:           true,
+			},
+			"pkcs12_bundle_content": schema.StringAttribute{
+				MarkdownDescription: "The PKCS12 bundle content in base64 encoded format. Only available when `pkcs12_bundle_password` is provided.",
+				Computed:            true,
+				Sensitive:           true,
 			},
 		},
 	}
@@ -303,31 +326,31 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		data.CertificateContentPEM = types.StringNull()
 	}
 
-	// Extract certificate extensions
+	// Extract certificate CA issuers
 	if cert.Attributes.CertificateContent != "" {
-		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		caIssuers, err := extractCertificateCAIssuers(cert.Attributes.CertificateContent)
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Certificate Extension Parsing Error",
-				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+				"Certificate CA Issuers Parsing Error",
+				fmt.Sprintf("Unable to parse certificate CA issuers: %s", err),
 			)
 			return
 		}
 
-		// Convert map[string]string to types.Map
-		extensionValues := make(map[string]attr.Value)
-		for k, v := range extensions {
-			extensionValues[k] = types.StringValue(v)
+		// Convert []string to types.List
+		issuerValues := make([]attr.Value, len(caIssuers))
+		for i, issuer := range caIssuers {
+			issuerValues[i] = types.StringValue(issuer)
 		}
 
-		extensionMap, diags := types.MapValue(types.StringType, extensionValues)
+		issuerList, diags := types.ListValue(types.StringType, issuerValues)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.CertificateExtensions = extensionMap
+		data.CertificateCAIssuers = issuerList
 	} else {
-		data.CertificateExtensions = types.MapNull(types.StringType)
+		data.CertificateCAIssuers = types.ListNull(types.StringType)
 	}
 
 	if cert.Attributes.ExpirationDate != nil {
@@ -342,6 +365,15 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 		data.RecreateThreshold = types.Int64Value(2592000) // 30 days
 	}
 	// Note: recreate_threshold is preserved from plan as it's not returned by Apple API
+
+	// Generate PKCS12 bundle if needed
+	if err := updatePKCS12Bundle(&data); err != nil {
+		resp.Diagnostics.AddError(
+			"PKCS12 Bundle Generation Error",
+			fmt.Sprintf("Unable to generate PKCS12 bundle: %s", err),
+		)
+		return
+	}
 
 	tflog.Trace(ctx, "Created Certificate", map[string]interface{}{
 		"id": data.ID.ValueString(),
@@ -360,6 +392,11 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	if resp.Diagnostics.HasError() {
 		return
 	}
+
+	// Preserve PKCS12-related fields from existing state
+	existingPrivateKeyPEM := data.PrivateKeyPEM
+	existingPKCS12Password := data.PKCS12BundlePassword
+	existingPKCS12Content := data.PKCS12BundleContent
 
 	tflog.Debug(ctx, "Reading Certificate", map[string]interface{}{
 		"id": data.ID.ValueString(),
@@ -414,31 +451,31 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 		data.CertificateContentPEM = types.StringNull()
 	}
 
-	// Extract certificate extensions
+	// Extract certificate CA issuers
 	if cert.Attributes.CertificateContent != "" {
-		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		caIssuers, err := extractCertificateCAIssuers(cert.Attributes.CertificateContent)
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Certificate Extension Parsing Error",
-				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+				"Certificate CA Issuers Parsing Error",
+				fmt.Sprintf("Unable to parse certificate CA issuers: %s", err),
 			)
 			return
 		}
 
-		// Convert map[string]string to types.Map
-		extensionValues := make(map[string]attr.Value)
-		for k, v := range extensions {
-			extensionValues[k] = types.StringValue(v)
+		// Convert []string to types.List
+		issuerValues := make([]attr.Value, len(caIssuers))
+		for i, issuer := range caIssuers {
+			issuerValues[i] = types.StringValue(issuer)
 		}
 
-		extensionMap, diags := types.MapValue(types.StringType, extensionValues)
+		issuerList, diags := types.ListValue(types.StringType, issuerValues)
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		data.CertificateExtensions = extensionMap
+		data.CertificateCAIssuers = issuerList
 	} else {
-		data.CertificateExtensions = types.MapNull(types.StringType)
+		data.CertificateCAIssuers = types.ListNull(types.StringType)
 	}
 
 	if cert.Attributes.ExpirationDate != nil {
@@ -460,16 +497,73 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 		data.Relationships = relationshipsObj
 	}
 
+	// Restore PKCS12-related fields from existing state to avoid unnecessary changes
+	// PKCS12 bundle generation only happens during Create/Update operations
+	data.PrivateKeyPEM = existingPrivateKeyPEM
+	data.PKCS12BundlePassword = existingPKCS12Password
+	data.PKCS12BundleContent = existingPKCS12Content
+
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *CertificateResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	// Certificates cannot be updated via the API
-	resp.Diagnostics.AddError(
-		"Update Not Supported",
-		"Certificates cannot be updated. To change the certificate, you must delete and recreate the resource.",
-	)
+	var plan CertificateResourceModel
+	var state CertificateResourceModel
+
+	// Read Terraform plan data into the model
+	resp.Diagnostics.Append(req.Plan.Get(ctx, &plan)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Read Terraform state data into the model
+	resp.Diagnostics.Append(req.State.Get(ctx, &state)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	// Check if only PKCS12-related fields have changed
+	certificateFieldsChanged := !plan.CertificateType.Equal(state.CertificateType) ||
+		!plan.CsrContent.Equal(state.CsrContent) ||
+		!plan.Relationships.Equal(state.Relationships)
+
+	if certificateFieldsChanged {
+		resp.Diagnostics.AddError(
+			"Update Not Supported",
+			"The certificate itself cannot be updated. Only pkcs12_bundle_password and private_key_pem can be modified without replacement. To change the certificate, you must delete and recreate the resource.",
+		)
+		return
+	}
+
+	// Copy all the computed fields from state to plan
+	plan.ID = state.ID
+	plan.CertificateContent = state.CertificateContent
+	plan.CertificateContentPEM = state.CertificateContentPEM
+	plan.CertificateCAIssuers = state.CertificateCAIssuers
+	plan.DisplayName = state.DisplayName
+	plan.Name = state.Name
+	plan.Platform = state.Platform
+	plan.SerialNumber = state.SerialNumber
+	plan.ExpirationDate = state.ExpirationDate
+	plan.RecreateThreshold = state.RecreateThreshold
+	plan.Relationships = state.Relationships
+
+	// Generate PKCS12 bundle with the new values
+	if err := updatePKCS12Bundle(&plan); err != nil {
+		resp.Diagnostics.AddError(
+			"PKCS12 Bundle Generation Error",
+			fmt.Sprintf("Unable to generate PKCS12 bundle: %s", err),
+		)
+		return
+	}
+
+	tflog.Trace(ctx, "Updated Certificate PKCS12 bundle", map[string]interface{}{
+		"id": plan.ID.ValueString(),
+	})
+
+	// Save updated data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &plan)...)
 }
 
 func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
@@ -504,6 +598,79 @@ func (r *CertificateResource) Delete(ctx context.Context, req resource.DeleteReq
 
 func (r *CertificateResource) ImportState(ctx context.Context, req resource.ImportStateRequest, resp *resource.ImportStateResponse) {
 	resource.ImportStatePassthroughID(ctx, path.Root("id"), req, resp)
+}
+
+// generatePKCS12Bundle creates a PKCS12 bundle from certificate and private key.
+func generatePKCS12Bundle(certPEM, privateKeyPEM, password string) (string, error) {
+	// Parse certificate
+	certBlock, _ := pem.Decode([]byte(certPEM))
+	if certBlock == nil {
+		return "", fmt.Errorf("failed to decode certificate PEM")
+	}
+
+	cert, err := x509.ParseCertificate(certBlock.Bytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse certificate: %w", err)
+	}
+
+	// Parse private key
+	keyBlock, _ := pem.Decode([]byte(privateKeyPEM))
+	if keyBlock == nil {
+		return "", fmt.Errorf("failed to decode private key PEM")
+	}
+
+	var privateKey interface{}
+	switch keyBlock.Type {
+	case "RSA PRIVATE KEY":
+		privateKey, err = x509.ParsePKCS1PrivateKey(keyBlock.Bytes)
+	case "EC PRIVATE KEY":
+		privateKey, err = x509.ParseECPrivateKey(keyBlock.Bytes)
+	case "PRIVATE KEY":
+		privateKey, err = x509.ParsePKCS8PrivateKey(keyBlock.Bytes)
+	default:
+		return "", fmt.Errorf("unsupported private key type: %s", keyBlock.Type)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to parse private key: %w", err)
+	}
+
+	// Create PKCS12
+	p12Data, err := pkcs12.Modern.Encode(privateKey, cert, nil, password)
+	if err != nil {
+		return "", fmt.Errorf("failed to encode PKCS12: %w", err)
+	}
+
+	// Encode to base64
+	return base64.StdEncoding.EncodeToString(p12Data), nil
+}
+
+// updatePKCS12Bundle generates PKCS12 bundle if both password and private key are provided.
+func updatePKCS12Bundle(data *CertificateResourceModel) error {
+	// Only generate PKCS12 if both password and private key are provided, and certificate is available
+	if !data.PKCS12BundlePassword.IsNull() && !data.PKCS12BundlePassword.IsUnknown() &&
+		!data.PrivateKeyPEM.IsNull() && !data.PrivateKeyPEM.IsUnknown() &&
+		!data.CertificateContentPEM.IsNull() && !data.CertificateContentPEM.IsUnknown() {
+
+		// Decode the base64-encoded PEM to get the raw PEM string
+		certPEMBytes, err := base64.StdEncoding.DecodeString(data.CertificateContentPEM.ValueString())
+		if err != nil {
+			return fmt.Errorf("failed to decode base64 certificate PEM: %w", err)
+		}
+
+		pkcs12Content, err := generatePKCS12Bundle(
+			string(certPEMBytes),
+			data.PrivateKeyPEM.ValueString(),
+			data.PKCS12BundlePassword.ValueString(),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to generate PKCS12 bundle: %w", err)
+		}
+		data.PKCS12BundleContent = types.StringValue(pkcs12Content)
+	} else {
+		data.PKCS12BundleContent = types.StringNull()
+	}
+	return nil
 }
 
 // CertificateRecreateThresholdPlanModifier is a custom plan modifier that triggers replacement

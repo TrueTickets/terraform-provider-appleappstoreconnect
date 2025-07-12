@@ -40,7 +40,13 @@ variable "private_key" {
   sensitive   = true
 }
 
-# Example 1: Generate certificate and encode to PKCS12
+# Example 1: Create Pass Type ID
+resource "appleappstoreconnect_pass_type_id" "example" {
+  identifier  = "pass.io.truetickets.test.membership"
+  description = "Test Membership Pass"
+}
+
+# Example 2: Generate certificate with PKCS12 bundle
 resource "tls_private_key" "example" {
   algorithm = "RSA"
   rsa_bits  = 2048
@@ -59,80 +65,53 @@ resource "tls_cert_request" "example" {
   }
 }
 
-# Create a self-signed certificate for testing
-resource "tls_self_signed_cert" "example" {
-  private_key_pem = tls_private_key.example.private_key_pem
+# Create certificate with automatic PKCS12 bundle generation
+resource "appleappstoreconnect_certificate" "example" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content      = tls_cert_request.example.cert_request_pem
 
-  subject {
-    common_name         = "Test Certificate"
-    organization        = "Test Org"
-    organizational_unit = "Engineering"
-    country             = "US"
-    locality            = "San Francisco"
-    province            = "CA"
+  # Optional: provide private key and password for PKCS12 bundle generation
+  private_key_pem        = tls_private_key.example.private_key_pem
+  pkcs12_bundle_password = "testpassword"
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.example.id
   }
-
-  validity_period_hours = 8760 # 1 year
-
-  allowed_uses = [
-    "key_encipherment",
-    "digital_signature",
-  ]
 }
 
-# Encode to PKCS12
-locals {
-  pkcs12_data = provider::appleappstoreconnect::pkcs12_encode(
-    tls_self_signed_cert.example.cert_pem,
-    tls_private_key.example.private_key_pem,
-    "testpassword"
-  )
-}
-
-# Save as P12 file
+# Save PKCS12 bundle as P12 file if available
 resource "local_file" "certificate_p12" {
-  content         = base64decode(local.pkcs12_data)
+  count = appleappstoreconnect_certificate.example.pkcs12_bundle_content != null ? 1 : 0
+
+  content         = base64decode(appleappstoreconnect_certificate.example.pkcs12_bundle_content)
   filename        = "test_certificate.p12"
   file_permission = "0600"
 }
 
-# Example 2: Decode the PKCS12 file we just created
-locals {
-  decoded_cert = provider::appleappstoreconnect::pkcs12_decode(
-    local.pkcs12_data,
-    "testpassword"
-  )
+# Outputs
+output "certificate_id" {
+  value = appleappstoreconnect_certificate.example.id
 }
 
-output "original_cert" {
-  value = tls_self_signed_cert.example.cert_pem
-}
-
-output "decoded_cert" {
-  value = local.decoded_cert.certificate_pem
-}
-
-output "decoded_key" {
-  value     = local.decoded_cert.private_key_pem
+output "certificate_pem" {
+  value     = appleappstoreconnect_certificate.example.certificate_content_pem
   sensitive = true
 }
 
-output "pkcs12_file_path" {
-  value = local_file.certificate_p12.filename
+output "pkcs12_available" {
+  value = appleappstoreconnect_certificate.example.pkcs12_bundle_content != null
 }
 
-# Example 3: Read an existing P12 file
-# Uncomment this if you have an existing P12 file to test with
-# locals {
-#   existing_p12 = provider::appleappstoreconnect::pkcs12_decode(
-#     filebase64("existing_certificate.p12"),
-#     "password"
-#   )
-# }
-#
-# output "existing_cert_info" {
-#   value = {
-#     certificate = local.existing_p12.certificate_pem
-#     has_key     = local.existing_p12.private_key_pem != ""
-#   }
-# }
+output "pkcs12_file_path" {
+  value = length(local_file.certificate_p12) > 0 ? local_file.certificate_p12[0].filename : null
+}
+
+# Example 3: Certificate without PKCS12 bundle
+resource "appleappstoreconnect_certificate" "no_pkcs12" {
+  certificate_type = "PASS_TYPE_ID"
+  csr_content      = tls_cert_request.example.cert_request_pem
+
+  relationships = {
+    pass_type_id = appleappstoreconnect_pass_type_id.example.id
+  }
+}

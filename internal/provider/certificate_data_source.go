@@ -39,7 +39,7 @@ type CertificateDataSourceModel struct {
 	CertificateType       types.String `tfsdk:"certificate_type"`
 	CertificateContent    types.String `tfsdk:"certificate_content"`
 	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
-	CertificateExtensions types.Map    `tfsdk:"certificate_extensions"`
+	CertificateCAIssuers  types.List   `tfsdk:"certificate_ca_issuers"`
 	DisplayName           types.String `tfsdk:"display_name"`
 	Name                  types.String `tfsdk:"name"`
 	Platform              types.String `tfsdk:"platform"`
@@ -90,8 +90,8 @@ func (d *CertificateDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 				Sensitive:           true,
 			},
-			"certificate_extensions": schema.MapAttribute{
-				MarkdownDescription: "A map of X509v3 certificate extensions. Keys are extension names or OIDs, values are hex-encoded extension data. For common extensions, human-readable parsed values are also provided with '_parsed' suffix.",
+			"certificate_ca_issuers": schema.ListAttribute{
+				MarkdownDescription: "A list of CA Issuer URIs from the Authority Information Access extension.",
 				Computed:            true,
 				ElementType:         types.StringType,
 			},
@@ -332,31 +332,31 @@ func (d *CertificateDataSource) updateModel(model *CertificateDataSourceModel, c
 		model.CertificateContentPEM = types.StringNull()
 	}
 
-	// Extract certificate extensions
+	// Extract certificate CA issuers
 	if cert.Attributes.CertificateContent != "" {
-		extensions, err := extractCertificateExtensions(cert.Attributes.CertificateContent)
+		caIssuers, err := extractCertificateCAIssuers(cert.Attributes.CertificateContent)
 		if err != nil {
 			resp.Diagnostics.AddError(
-				"Certificate Extension Parsing Error",
-				fmt.Sprintf("Unable to parse certificate extensions: %s", err),
+				"Certificate CA Issuers Parsing Error",
+				fmt.Sprintf("Unable to parse certificate CA issuers: %s", err),
 			)
 			return
 		}
 
-		// Convert map[string]string to types.Map
-		extensionValues := make(map[string]attr.Value)
-		for k, v := range extensions {
-			extensionValues[k] = types.StringValue(v)
+		// Convert []string to types.List
+		issuerValues := make([]attr.Value, len(caIssuers))
+		for i, issuer := range caIssuers {
+			issuerValues[i] = types.StringValue(issuer)
 		}
 
-		extensionMap, diagnostics := types.MapValue(types.StringType, extensionValues)
+		issuerList, diagnostics := types.ListValue(types.StringType, issuerValues)
 		resp.Diagnostics.Append(diagnostics...)
 		if resp.Diagnostics.HasError() {
 			return
 		}
-		model.CertificateExtensions = extensionMap
+		model.CertificateCAIssuers = issuerList
 	} else {
-		model.CertificateExtensions = types.MapNull(types.StringType)
+		model.CertificateCAIssuers = types.ListNull(types.StringType)
 	}
 
 	if cert.Attributes.ExpirationDate != nil {
