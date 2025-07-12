@@ -35,15 +35,16 @@ type CertificateDataSource struct {
 
 // CertificateDataSourceModel describes the data source data model.
 type CertificateDataSourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	CertificateType    types.String `tfsdk:"certificate_type"`
-	CertificateContent types.String `tfsdk:"certificate_content"`
-	DisplayName        types.String `tfsdk:"display_name"`
-	Name               types.String `tfsdk:"name"`
-	Platform           types.String `tfsdk:"platform"`
-	SerialNumber       types.String `tfsdk:"serial_number"`
-	ExpirationDate     types.String `tfsdk:"expiration_date"`
-	Relationships      types.Object `tfsdk:"relationships"`
+	ID                    types.String `tfsdk:"id"`
+	CertificateType       types.String `tfsdk:"certificate_type"`
+	CertificateContent    types.String `tfsdk:"certificate_content"`
+	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
+	DisplayName           types.String `tfsdk:"display_name"`
+	Name                  types.String `tfsdk:"name"`
+	Platform              types.String `tfsdk:"platform"`
+	SerialNumber          types.String `tfsdk:"serial_number"`
+	ExpirationDate        types.String `tfsdk:"expiration_date"`
+	Relationships         types.Object `tfsdk:"relationships"`
 	// Filter attributes
 	Filter types.Object `tfsdk:"filter"`
 }
@@ -79,7 +80,12 @@ func (d *CertificateDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:            true,
 			},
 			"certificate_content": schema.StringAttribute{
-				MarkdownDescription: "The certificate content in PEM format.",
+				MarkdownDescription: "The certificate content in base64 encoded DER format.",
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"certificate_content_pem": schema.StringAttribute{
+				MarkdownDescription: "The certificate content in base64 encoded PEM format.",
 				Computed:            true,
 				Sensitive:           true,
 			},
@@ -304,6 +310,21 @@ func (d *CertificateDataSource) updateModel(model *CertificateDataSourceModel, c
 	model.Name = types.StringValue(cert.Attributes.Name)
 	model.Platform = types.StringValue(cert.Attributes.Platform)
 	model.SerialNumber = types.StringValue(cert.Attributes.SerialNumber)
+
+	// Convert DER to PEM format
+	if cert.Attributes.CertificateContent != "" {
+		pemContent, err := convertDERToPEM(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Conversion Error",
+				fmt.Sprintf("Unable to convert certificate to PEM format: %s", err),
+			)
+			return
+		}
+		model.CertificateContentPEM = types.StringValue(pemContent)
+	} else {
+		model.CertificateContentPEM = types.StringNull()
+	}
 
 	if cert.Attributes.ExpirationDate != nil {
 		model.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))

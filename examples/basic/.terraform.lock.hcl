@@ -23,6 +23,6 @@ provider "registry.opentofu.org/truetickets/appleappstoreconnect" {
   version     = "0.1.0"
   constraints = "~> 0.0"
   hashes = [
-    "h1:wupVJFYDB2qPDjMF5CQC24FXqzj5sugLU6TpFgv5b6Y=",
+    "h1:SDGFmBDdrYlU5MLWgT1VIFTnaPmvIwh0uaaaRq35Z0k=",
   ]
 }

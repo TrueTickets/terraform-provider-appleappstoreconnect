@@ -13,8 +13,10 @@ Manages a Certificate in App Store Connect.
 Certificates are used to sign Apple Wallet passes and enable features
 like NFC. Different certificate types provide different capabilities.
 
-**Auto-Renewal**: The certificate resource supports automatic recreation
-before expiration using the `recreate_threshold` argument.
+**Note**: Both `certificate_content` (DER format) and
+`certificate_content_pem` (PEM format) are returned as base64 encoded
+strings. Use Terraform's `base64decode()` function to decode them before
+saving to files.
 
 ## Example Usage
 
@@ -30,10 +32,7 @@ resource "appleappstoreconnect_certificate" "example" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = file("example.csr")
 
-  # Automatically recreate certificate 30 days before expiration (default)
-  recreate_threshold = 2592000  # 30 days in seconds
-
-  relationships = {
+  relationships {
     pass_type_id = appleappstoreconnect_pass_type_id.example.id
   }
 }
@@ -76,9 +75,16 @@ resource "appleappstoreconnect_certificate" "example" {
   }
 }
 
-resource "local_file" "certificate" {
-  content  = appleappstoreconnect_certificate.example.certificate_content
+# Save certificate in PEM format
+resource "local_file" "certificate_pem" {
+  content  = base64decode(appleappstoreconnect_certificate.example.certificate_content_pem)
   filename = "certificate.pem"
+}
+
+# Save certificate in DER format
+resource "local_file" "certificate_der" {
+  content  = base64decode(appleappstoreconnect_certificate.example.certificate_content)
+  filename = "certificate.der"
 }
 ```
 
@@ -108,7 +114,9 @@ resource "local_file" "certificate" {
 ### Read-Only
 
 - `certificate_content` (String, Sensitive) The certificate content in
-  PEM format.
+  base64 encoded DER format.
+- `certificate_content_pem` (String, Sensitive) The certificate content
+  in base64 encoded PEM format.
 - `display_name` (String) The display name of the certificate.
 - `expiration_date` (String) The expiration date of the certificate.
 - `id` (String) The unique identifier of the Certificate.
@@ -153,52 +161,3 @@ terraform import appleappstoreconnect_certificate.example YYYYYYYYYY
 ```
 
 Where `YYYYYYYYYY` is the Certificate ID from App Store Connect.
-
-## Auto-Renewal Examples
-
-### Certificate with Custom Renewal Threshold
-
-```hcl
-resource "appleappstoreconnect_certificate" "auto_renew" {
-  certificate_type = "PASS_TYPE_ID"
-  csr_content     = tls_cert_request.example.cert_request_pem
-
-  # Recreate 60 days before expiration
-  recreate_threshold = 5184000  # 60 days in seconds
-
-  relationships = {
-    pass_type_id = appleappstoreconnect_pass_type_id.example.id
-  }
-}
-```
-
-### Disable Auto-Renewal
-
-```hcl
-resource "appleappstoreconnect_certificate" "manual_only" {
-  certificate_type = "PASS_TYPE_ID"
-  csr_content     = tls_cert_request.example.cert_request_pem
-
-  # Disable automatic recreation
-  recreate_threshold = 0
-
-  relationships = {
-    pass_type_id = appleappstoreconnect_pass_type_id.example.id
-  }
-}
-```
-
-## Certificate Lifecycle
-
-- **Creation**: Creates a new certificate using the provided CSR
-- **Expiration Monitoring**: Automatically monitors certificate
-  expiration based on `recreate_threshold`
-- **Auto-Renewal**: Triggers recreation when expiration is within
-  threshold
-- **Deletion**: Removes certificate from Terraform state (certificates
-  cannot be revoked via API)
-
-**Note**: Apple's App Store Connect API does not support programmatic
-certificate revocation. When a certificate resource is destroyed, it is
-only removed from Terraform state. To revoke a certificate, contact
-Apple Developer Program Support.

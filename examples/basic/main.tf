@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 terraform {
   required_providers {
     appleappstoreconnect = {
@@ -55,9 +57,19 @@ resource "appleappstoreconnect_certificate" "tf_test" {
   }
 }
 
+
+data "tls_certificate" "tf_test" {
+  content = base64decode(appleappstoreconnect_certificate.tf_test.certificate_content_pem)
+}
+
 # Output the certificate
 output "certificate_content" {
   value     = appleappstoreconnect_certificate.tf_test.certificate_content
+  sensitive = true
+}
+
+output "certificate_content_pem" {
+  value     = appleappstoreconnect_certificate.tf_test.certificate_content_pem
   sensitive = true
 }
 

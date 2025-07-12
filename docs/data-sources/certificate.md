@@ -39,10 +39,16 @@ data "appleappstoreconnect_certificate" "specific_cert" {
   }
 }
 
-# Save certificate to local file
-resource "local_file" "cert" {
-  content  = data.appleappstoreconnect_certificate.pass_cert.certificate_content
+# Save certificate to local file in PEM format
+resource "local_file" "cert_pem" {
+  content  = base64decode(data.appleappstoreconnect_certificate.pass_cert.certificate_content_pem)
   filename = "pass_certificate.pem"
+}
+
+# Save certificate to local file in DER format
+resource "local_file" "cert_der" {
+  content  = base64decode(data.appleappstoreconnect_certificate.pass_cert.certificate_content)
+  filename = "pass_certificate.der"
 }
 ```
 
@@ -79,7 +85,9 @@ output "pass_type_id" {
 ### Read-Only
 
 - `certificate_content` (String, Sensitive) The certificate content in
-  PEM format.
+  base64 encoded DER format.
+- `certificate_content_pem` (String, Sensitive) The certificate content
+  in base64 encoded PEM format.
 - `certificate_type` (String) The type of certificate.
 - `display_name` (String) The display name of the certificate.
 - `expiration_date` (String) The expiration date of the certificate.

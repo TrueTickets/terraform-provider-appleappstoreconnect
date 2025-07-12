@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 variable "app_store_connect_issuer_id" {
   type        = string
   sensitive   = true

@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 resource "appleappstoreconnect_pass_type_id" "loyalty" {
   identifier  = "pass.io.truetickets.test.loyalty"
   description = "Loyalty Program Cards"

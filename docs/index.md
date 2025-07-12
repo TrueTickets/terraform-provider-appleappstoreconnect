@@ -40,10 +40,7 @@ resource "appleappstoreconnect_certificate" "example" {
   certificate_type = "PASS_TYPE_ID"
   csr_content     = file("path/to/certificate_signing_request.csr")
 
-  # Automatically recreate certificate 30 days before expiration (default)
-  recreate_threshold = 2592000  # 30 days in seconds
-
-  relationships = {
+  relationships {
     pass_type_id = appleappstoreconnect_pass_type_id.example.id
   }
 }

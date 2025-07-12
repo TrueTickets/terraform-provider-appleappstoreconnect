@@ -46,15 +46,16 @@ type CertificatesFilterModel struct {
 
 // CertificateListItemModel describes a certificate in the list.
 type CertificateListItemModel struct {
-	ID                 types.String `tfsdk:"id"`
-	CertificateType    types.String `tfsdk:"certificate_type"`
-	CertificateContent types.String `tfsdk:"certificate_content"`
-	DisplayName        types.String `tfsdk:"display_name"`
-	Name               types.String `tfsdk:"name"`
-	Platform           types.String `tfsdk:"platform"`
-	SerialNumber       types.String `tfsdk:"serial_number"`
-	ExpirationDate     types.String `tfsdk:"expiration_date"`
-	Relationships      types.Object `tfsdk:"relationships"`
+	ID                    types.String `tfsdk:"id"`
+	CertificateType       types.String `tfsdk:"certificate_type"`
+	CertificateContent    types.String `tfsdk:"certificate_content"`
+	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
+	DisplayName           types.String `tfsdk:"display_name"`
+	Name                  types.String `tfsdk:"name"`
+	Platform              types.String `tfsdk:"platform"`
+	SerialNumber          types.String `tfsdk:"serial_number"`
+	ExpirationDate        types.String `tfsdk:"expiration_date"`
+	Relationships         types.Object `tfsdk:"relationships"`
 }
 
 func (d *CertificatesDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
@@ -80,7 +81,12 @@ func (d *CertificatesDataSource) Schema(ctx context.Context, req datasource.Sche
 							Computed:            true,
 						},
 						"certificate_content": schema.StringAttribute{
-							MarkdownDescription: "The certificate content in PEM format.",
+							MarkdownDescription: "The certificate content in base64 encoded DER format.",
+							Computed:            true,
+							Sensitive:           true,
+						},
+						"certificate_content_pem": schema.StringAttribute{
+							MarkdownDescription: "The certificate content in base64 encoded PEM format.",
 							Computed:            true,
 							Sensitive:           true,
 						},
@@ -283,6 +289,21 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 			SerialNumber:       types.StringValue(cert.Attributes.SerialNumber),
 		}
 
+		// Convert DER to PEM format
+		if cert.Attributes.CertificateContent != "" {
+			pemContent, err := convertDERToPEM(cert.Attributes.CertificateContent)
+			if err != nil {
+				resp.Diagnostics.AddError(
+					"Certificate Conversion Error",
+					fmt.Sprintf("Unable to convert certificate to PEM format: %s", err),
+				)
+				return
+			}
+			item.CertificateContentPEM = types.StringValue(pemContent)
+		} else {
+			item.CertificateContentPEM = types.StringNull()
+		}
+
 		if cert.Attributes.ExpirationDate != nil {
 			item.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
 		} else {
@@ -317,14 +338,15 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Create the list value
 	certList, diags := types.ListValueFrom(ctx, types.ObjectType{
 		AttrTypes: map[string]attr.Type{
-			"id":                  types.StringType,
-			"certificate_type":    types.StringType,
-			"certificate_content": types.StringType,
-			"display_name":        types.StringType,
-			"name":                types.StringType,
-			"platform":            types.StringType,
-			"serial_number":       types.StringType,
-			"expiration_date":     types.StringType,
+			"id":                      types.StringType,
+			"certificate_type":        types.StringType,
+			"certificate_content":     types.StringType,
+			"certificate_content_pem": types.StringType,
+			"display_name":            types.StringType,
+			"name":                    types.StringType,
+			"platform":                types.StringType,
+			"serial_number":           types.StringType,
+			"expiration_date":         types.StringType,
 			"relationships": types.ObjectType{
 				AttrTypes: map[string]attr.Type{
 					"pass_type_id": types.StringType,

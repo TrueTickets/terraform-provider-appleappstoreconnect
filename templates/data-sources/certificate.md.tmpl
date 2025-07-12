@@ -37,10 +37,16 @@ data "appleappstoreconnect_certificate" "specific_cert" {
   }
 }
 
-# Save certificate to local file
-resource "local_file" "cert" {
-  content  = data.appleappstoreconnect_certificate.pass_cert.certificate_content
+# Save certificate to local file in PEM format
+resource "local_file" "cert_pem" {
+  content  = base64decode(data.appleappstoreconnect_certificate.pass_cert.certificate_content_pem)
   filename = "pass_certificate.pem"
+}
+
+# Save certificate to local file in DER format
+resource "local_file" "cert_der" {
+  content  = base64decode(data.appleappstoreconnect_certificate.pass_cert.certificate_content)
+  filename = "pass_certificate.der"
 }
 ```
 

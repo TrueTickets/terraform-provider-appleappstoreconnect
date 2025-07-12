@@ -11,6 +11,8 @@ description: |-
 
 Certificates are used to sign Apple Wallet passes and enable features like NFC. Different certificate types provide different capabilities.
 
+**Note**: Both `certificate_content` (DER format) and `certificate_content_pem` (PEM format) are returned as base64 encoded strings. Use Terraform's `base64decode()` function to decode them before saving to files.
+
 ## Example Usage
 
 ### Basic Pass Certificate
@@ -68,9 +70,16 @@ resource "appleappstoreconnect_certificate" "example" {
   }
 }
 
-resource "local_file" "certificate" {
-  content  = appleappstoreconnect_certificate.example.certificate_content
+# Save certificate in PEM format
+resource "local_file" "certificate_pem" {
+  content  = base64decode(appleappstoreconnect_certificate.example.certificate_content_pem)
   filename = "certificate.pem"
+}
+
+# Save certificate in DER format
+resource "local_file" "certificate_der" {
+  content  = base64decode(appleappstoreconnect_certificate.example.certificate_content)
+  filename = "certificate.der"
 }
 ```
 

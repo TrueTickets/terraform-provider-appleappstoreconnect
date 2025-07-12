@@ -42,17 +42,18 @@ type CertificateResource struct {
 
 // CertificateResourceModel describes the resource data model.
 type CertificateResourceModel struct {
-	ID                 types.String `tfsdk:"id"`
-	CertificateType    types.String `tfsdk:"certificate_type"`
-	CsrContent         types.String `tfsdk:"csr_content"`
-	CertificateContent types.String `tfsdk:"certificate_content"`
-	DisplayName        types.String `tfsdk:"display_name"`
-	Name               types.String `tfsdk:"name"`
-	Platform           types.String `tfsdk:"platform"`
-	SerialNumber       types.String `tfsdk:"serial_number"`
-	ExpirationDate     types.String `tfsdk:"expiration_date"`
-	RecreateThreshold  types.Int64  `tfsdk:"recreate_threshold"`
-	Relationships      types.Object `tfsdk:"relationships"`
+	ID                    types.String `tfsdk:"id"`
+	CertificateType       types.String `tfsdk:"certificate_type"`
+	CsrContent            types.String `tfsdk:"csr_content"`
+	CertificateContent    types.String `tfsdk:"certificate_content"`
+	CertificateContentPEM types.String `tfsdk:"certificate_content_pem"`
+	DisplayName           types.String `tfsdk:"display_name"`
+	Name                  types.String `tfsdk:"name"`
+	Platform              types.String `tfsdk:"platform"`
+	SerialNumber          types.String `tfsdk:"serial_number"`
+	ExpirationDate        types.String `tfsdk:"expiration_date"`
+	RecreateThreshold     types.Int64  `tfsdk:"recreate_threshold"`
+	Relationships         types.Object `tfsdk:"relationships"`
 }
 
 // CertificateRelationshipsModel describes the relationships data model.
@@ -108,7 +109,12 @@ func (r *CertificateResource) Schema(ctx context.Context, req resource.SchemaReq
 				},
 			},
 			"certificate_content": schema.StringAttribute{
-				MarkdownDescription: "The certificate content in PEM format.",
+				MarkdownDescription: "The certificate content in base64 encoded DER format.",
+				Computed:            true,
+				Sensitive:           true,
+			},
+			"certificate_content_pem": schema.StringAttribute{
+				MarkdownDescription: "The certificate content in base64 encoded PEM format.",
 				Computed:            true,
 				Sensitive:           true,
 			},
@@ -276,6 +282,21 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 	data.Platform = types.StringValue(cert.Attributes.Platform)
 	data.SerialNumber = types.StringValue(cert.Attributes.SerialNumber)
 
+	// Convert DER to PEM format
+	if cert.Attributes.CertificateContent != "" {
+		pemContent, err := convertDERToPEM(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Conversion Error",
+				fmt.Sprintf("Unable to convert certificate to PEM format: %s", err),
+			)
+			return
+		}
+		data.CertificateContentPEM = types.StringValue(pemContent)
+	} else {
+		data.CertificateContentPEM = types.StringNull()
+	}
+
 	if cert.Attributes.ExpirationDate != nil {
 		data.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))
 	} else {
@@ -344,6 +365,21 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	data.Name = types.StringValue(cert.Attributes.Name)
 	data.Platform = types.StringValue(cert.Attributes.Platform)
 	data.SerialNumber = types.StringValue(cert.Attributes.SerialNumber)
+
+	// Convert DER to PEM format
+	if cert.Attributes.CertificateContent != "" {
+		pemContent, err := convertDERToPEM(cert.Attributes.CertificateContent)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Certificate Conversion Error",
+				fmt.Sprintf("Unable to convert certificate to PEM format: %s", err),
+			)
+			return
+		}
+		data.CertificateContentPEM = types.StringValue(pemContent)
+	} else {
+		data.CertificateContentPEM = types.StringNull()
+	}
 
 	if cert.Attributes.ExpirationDate != nil {
 		data.ExpirationDate = types.StringValue(cert.Attributes.ExpirationDate.Format("2006-01-02T15:04:05Z"))

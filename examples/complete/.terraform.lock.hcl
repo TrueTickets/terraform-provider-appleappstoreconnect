@@ -1,3 +1,5 @@
+# Copyright (c) HashiCorp, Inc.
+
 # This file is maintained automatically by "tofu init".
 # Manual edits may be lost in future updates.
 
@@ -40,6 +42,6 @@ provider "registry.opentofu.org/truetickets/appleappstoreconnect" {
   version     = "0.1.0"
   constraints = "~> 0.1"
   hashes = [
-    "h1:wupVJFYDB2qPDjMF5CQC24FXqzj5sugLU6TpFgv5b6Y=",
+    "h1:cDGH3pn+e5MfRE7qrXUy4j69i6enm9KiNmZK/TRvT/Y=",
   ]
 }

@@ -133,7 +133,9 @@ Optional:
 Read-Only:
 
 - `certificate_content` (String, Sensitive) The certificate content in
-  PEM format.
+  base64 encoded DER format.
+- `certificate_content_pem` (String, Sensitive) The certificate content
+  in base64 encoded PEM format.
 - `certificate_type` (String) The type of certificate.
 - `display_name` (String) The display name of the certificate.
 - `expiration_date` (String) The expiration date of the certificate.
