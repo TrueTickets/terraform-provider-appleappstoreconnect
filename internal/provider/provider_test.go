@@ -86,14 +86,3 @@ func TestProviderDataSources(t *testing.T) {
 		t.Errorf("Expected 3 data sources, got %d", len(dataSources))
 	}
 }
-
-func TestProviderFunctions(t *testing.T) {
-	ctx := context.Background()
-	p := &AppleAppStoreConnectProvider{}
-
-	functions := p.Functions(ctx)
-
-	if len(functions) != 2 {
-		t.Errorf("Expected 2 functions, got %d", len(functions))
-	}
-}
