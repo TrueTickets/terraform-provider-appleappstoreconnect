@@ -67,6 +67,9 @@ func (r *PassTypeIDResource) Schema(ctx context.Context, req resource.SchemaRequ
 			"description": schema.StringAttribute{
 				MarkdownDescription: "A description of the Pass Type ID.",
 				Required:            true,
+				PlanModifiers: []planmodifier.String{
+					stringplanmodifier.RequiresReplace(),
+				},
 			},
 			"created_date": schema.StringAttribute{
 				MarkdownDescription: "The date when the Pass Type ID was created.",
