@@ -84,6 +84,8 @@ output "pass_type_id" {
 
 ### Read-Only
 
+- `certificate_ca_issuers` (List of String) A list of CA Issuer URIs
+  from the Authority Information Access extension.
 - `certificate_content` (String, Sensitive) The certificate content in
   base64 encoded DER format.
 - `certificate_content_pem` (String, Sensitive) The certificate content

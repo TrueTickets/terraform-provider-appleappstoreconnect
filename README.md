@@ -1,8 +1,8 @@
-# Terraform Provider for Apple App Store Connect
+# Terraform/OpenTofu Provider for Apple App Store Connect
 
-This Terraform provider enables management of Apple App Store Connect
-resources, with initial support for Pass Type IDs and Certificates used
-in Apple Wallet pass development.
+This Terraform/OpenTofu provider enables management of Apple App Store
+Connect resources, with initial support for Pass Type IDs and
+Certificates used in Apple Wallet pass development.
 
 ## Features
 
@@ -24,21 +24,19 @@ in Apple Wallet pass development.
 ## Requirements
 
 - [Terraform](https://developer.hashicorp.com/terraform/downloads) >=
-  1.0
+  1.0 or [OpenTofu](https://opentofu.org/docs/intro/install/) >= 1.6
 - [Go](https://golang.org/doc/install) >= 1.23 (for development)
 - Apple Developer account with App Store Connect API access
 - API Key with appropriate permissions
 
 ## Installation
 
-### Terraform 0.13+
-
 ```hcl
 terraform {
   required_providers {
     appleappstoreconnect = {
       source  = "truetickets/appleappstoreconnect"
-      version = "~> 0.1"
+      version = "~> 1.2"
     }
   }
 }

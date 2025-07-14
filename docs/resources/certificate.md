@@ -105,6 +105,14 @@ resource "local_file" "certificate_der" {
 
 ### Optional
 
+- `pkcs12_bundle_password` (String, Sensitive) Password to use for the
+  PKCS12 bundle. When provided, a PKCS12 bundle will be generated and
+  available in the `pkcs12_bundle_content` attribute. Changes to this
+  value do not require certificate replacement.
+- `private_key_pem` (String, Sensitive) The private key in PEM format.
+  Only required if you want to generate a PKCS12 bundle. This is not
+  sent to Apple's API and is only used locally for PKCS12 generation.
+  Changes to this value do not require certificate replacement.
 - `recreate_threshold` (Number) The number of seconds before certificate
   expiration when Terraform should recreate the certificate. Set to 0 to
   disable automatic recreation. Default is 2592000 seconds (30 days).
@@ -113,6 +121,8 @@ resource "local_file" "certificate_der" {
 
 ### Read-Only
 
+- `certificate_ca_issuers` (List of String) A list of CA Issuer URIs
+  from the Authority Information Access extension.
 - `certificate_content` (String, Sensitive) The certificate content in
   base64 encoded DER format.
 - `certificate_content_pem` (String, Sensitive) The certificate content
@@ -121,6 +131,9 @@ resource "local_file" "certificate_der" {
 - `expiration_date` (String) The expiration date of the certificate.
 - `id` (String) The unique identifier of the Certificate.
 - `name` (String) The name of the certificate.
+- `pkcs12_bundle_content` (String, Sensitive) The PKCS12 bundle content
+  in base64 encoded format. Only available when `pkcs12_bundle_password`
+  is provided.
 - `platform` (String) The platform for the certificate.
 - `serial_number` (String) The serial number of the certificate.
 
