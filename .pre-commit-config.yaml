@@ -36,6 +36,7 @@ repos:
           - id: prettier
             additional_dependencies:
                 - prettier@3.4.2
+            exclude: ^docs/
     - repo: https://github.com/adrienverge/yamllint.git
       rev: v1.37.1
       hooks:
