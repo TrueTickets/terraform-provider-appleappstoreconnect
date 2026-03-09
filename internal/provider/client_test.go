@@ -175,11 +175,13 @@ func TestClient_Do(t *testing.T) {
 
 		if resp == nil {
 			t.Fatal("Response is nil")
+			return
 		}
 
 		// Check that we got data back
 		if resp.Data == nil {
 			t.Fatal("Response data is nil")
+			return
 		}
 
 		// The resp.Data should contain the JSON response

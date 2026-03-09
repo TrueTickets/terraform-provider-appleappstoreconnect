@@ -52,6 +52,7 @@ func TestConvertDERToPEM(t *testing.T) {
 	block, _ := pem.Decode([]byte(pemResult))
 	if block == nil {
 		t.Fatal("Failed to decode PEM block")
+		return
 	}
 	if block.Type != "CERTIFICATE" {
 		t.Errorf("Expected block type CERTIFICATE, got %s", block.Type)
