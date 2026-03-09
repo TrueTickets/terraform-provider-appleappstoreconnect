@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2025, 2026
 
 resource "appleappstoreconnect_pass_type_id" "event_ticket" {
   identifier  = "pass.io.truetickets.test.eventticket"

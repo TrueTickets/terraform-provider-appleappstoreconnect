@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2025, 2026
 
 variable "app_store_connect_issuer_id" {
   type        = string
