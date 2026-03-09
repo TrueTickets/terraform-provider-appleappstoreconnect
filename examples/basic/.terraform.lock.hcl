@@ -1,4 +1,4 @@
-# Copyright (c) HashiCorp, Inc.
+# Copyright IBM Corp. 2025, 2026
 
 # This file is maintained automatically by "tofu init".
 # Manual edits may be lost in future updates.
