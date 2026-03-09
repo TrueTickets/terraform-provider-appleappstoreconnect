@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2025, 2026
+# Copyright (c) HashiCorp, Inc.
 
 output "pass_type_ids" {
   description = "Map of Pass Type IDs"

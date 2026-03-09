@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2025, 2026
+# Copyright (c) HashiCorp, Inc.
 
 # Example of using data sources to retrieve existing resources
 

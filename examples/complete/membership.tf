@@ -1,4 +1,4 @@
-# Copyright IBM Corp. 2025, 2026
+# Copyright (c) HashiCorp, Inc.
 
 resource "appleappstoreconnect_pass_type_id" "membership" {
   identifier  = "pass.io.truetickets.test.membership"
