@@ -1,0 +1,38 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Find by ID
+
+```hcl
+data "appleappstoreconnect_bundle_id" "example" {
+  id = "XXXXXXXXXX"
+}
+```
+
+### Find by Identifier
+
+```hcl
+# Find Bundle ID by its reverse-DNS identifier
+data "appleappstoreconnect_bundle_id" "example" {
+  filter = {
+    identifier = "io.truetickets.test.app"
+  }
+}
+
+# Use the Bundle ID
+output "bundle_id" {
+  value = data.appleappstoreconnect_bundle_id.example.id
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

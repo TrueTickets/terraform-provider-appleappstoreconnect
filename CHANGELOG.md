@@ -6,8 +6,12 @@ FEATURES:
   Type IDs for Apple Wallet passes
 - **New Resource:** `appleappstoreconnect_certificate` - Manage
   certificates with Pass Type ID relationships
+- **New Resource:** `appleappstoreconnect_bundle_id` - Manage Bundle IDs
+  (App IDs), including in-place renaming and import
 - **New Data Source:** `appleappstoreconnect_pass_type_id` - Retrieve
   information about a Pass Type ID
+- **New Data Source:** `appleappstoreconnect_bundle_id` - Retrieve
+  information about a Bundle ID by resource ID or identifier
 - **New Data Source:** `appleappstoreconnect_certificate` - Retrieve
   information about a certificate with filtering support
 - **New Data Source:** `appleappstoreconnect_certificates` - List
