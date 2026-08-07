@@ -9,10 +9,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -80,7 +82,7 @@ func NewClient(issuerID, keyID, privateKeyPEM string) (*Client, error) {
 
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 90 * time.Second,
 		},
 		issuerID:   issuerID,
 		keyID:      keyID,
@@ -170,6 +172,40 @@ type Error struct {
 	Title  string       `json:"title,omitempty"`
 	Detail string       `json:"detail,omitempty"`
 	Source *ErrorSource `json:"source,omitempty"`
+}
+
+// APIError is returned by Client.Do for any non-2xx HTTP response. Callers can
+// inspect StatusCode to react to specific conditions (e.g. treat 404 as a
+// drift signal and remove the resource from state) via errors.As.
+type APIError struct {
+	StatusCode int
+	Errors     []Error
+	RawBody    string
+}
+
+// Error formats the API error. The format is preserved from the previous
+// inline fmt.Errorf calls so Diagnostics messages stay stable.
+func (e *APIError) Error() string {
+	if len(e.Errors) > 0 {
+		parts := make([]string, 0, len(e.Errors))
+		for _, apiErr := range e.Errors {
+			parts = append(parts, fmt.Sprintf("%s: %s", apiErr.Title, apiErr.Detail))
+		}
+		return "API error: " + strings.Join(parts, "; ")
+	}
+	if e.RawBody != "" {
+		return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.RawBody)
+	}
+	return fmt.Sprintf("API error: HTTP %d", e.StatusCode)
+}
+
+// IsNotFound reports whether err is an *APIError with HTTP 404 status.
+func IsNotFound(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.StatusCode == http.StatusNotFound
 }
 
 // ErrorSource represents the source of an error.
@@ -275,34 +311,27 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		if httpResp.StatusCode >= 200 && httpResp.StatusCode < 300 {
 			return &resp, nil
 		}
-		// For error responses that are empty, return generic error
-		return nil, fmt.Errorf("API error (status %d): empty response", httpResp.StatusCode)
+		// For error responses that are empty, return a typed APIError so
+		// callers can branch on the status code (e.g. 404 → RemoveResource).
+		return nil, &APIError{StatusCode: httpResp.StatusCode, RawBody: "empty response"}
 	}
 
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		// If we can't parse as a standard response, check if it's an error
 		if httpResp.StatusCode >= 400 {
-			return nil, fmt.Errorf("API error (status %d): %s", httpResp.StatusCode, string(respBody))
+			return nil, &APIError{StatusCode: httpResp.StatusCode, RawBody: string(respBody)}
 		}
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	// Check for errors
 	if len(resp.Errors) > 0 {
-		// Build error message
-		var errMsg string
-		for i, apiErr := range resp.Errors {
-			if i > 0 {
-				errMsg += "; "
-			}
-			errMsg += fmt.Sprintf("%s: %s", apiErr.Title, apiErr.Detail)
-		}
-		return nil, fmt.Errorf("API error: %s", errMsg)
+		return nil, &APIError{StatusCode: httpResp.StatusCode, Errors: resp.Errors}
 	}
 
 	// Check HTTP status
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("API error: HTTP %d", httpResp.StatusCode)
+		return nil, &APIError{StatusCode: httpResp.StatusCode}
 	}
 
 	return &resp, nil
