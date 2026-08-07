@@ -81,6 +81,10 @@ jobs:
                   terraform_version: ${{ matrix.terraform }}
                   terraform_wrapper: false
             - run: go mod download
+            # The acceptance test step exits 0 with a skip message when the
+            # Apple App Store Connect credentials are not configured (e.g. on
+            # forks or PRs from external contributors) so the workflow does
+            # not fail for lack of secrets.
             - env:
                   APP_STORE_CONNECT_ISSUER_ID:
                       ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -89,5 +93,10 @@ jobs:
                   APP_STORE_CONNECT_PRIVATE_KEY:
                       ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
                   TF_ACC: "1"
-              run: go test -v -cover ./internal/provider/
+              run: |
+                  if [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+                      echo "Apple App Store Connect credentials not configured, skipping acceptance tests."
+                      exit 0
+                  fi
+                  go test -v -cover ./internal/provider/
               timeout-minutes: 10
