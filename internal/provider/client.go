@@ -26,6 +26,12 @@ const (
 	// baseURL is the base URL for the App Store Connect API.
 	baseURL = "https://api.appstoreconnect.apple.com/v1"
 
+	// maxRetryAttempts bounds how many times a request answered with a 5xx is
+	// replayed, and retryBackoff is the base delay between attempts (it grows
+	// linearly: 1s, then 2s).
+	maxRetryAttempts = 3
+	retryBackoff     = time.Second
+
 	// tokenExpiration is the maximum lifetime of a JWT token (20 minutes).
 	tokenExpiration = 20 * time.Minute
 
@@ -40,6 +46,11 @@ type Client struct {
 	keyID      string
 	privateKey interface{}
 	baseURL    string
+
+	// Retry policy for transient 5xx answers. Fields rather than constants so
+	// tests can shrink the backoff.
+	maxAttempts  int
+	retryBackoff time.Duration
 
 	// Token management
 	mu           sync.RWMutex
@@ -88,6 +99,9 @@ func NewClient(issuerID, keyID, privateKeyPEM string) (*Client, error) {
 		keyID:      keyID,
 		privateKey: privateKey,
 		baseURL:    baseURL,
+
+		maxAttempts:  maxRetryAttempts,
+		retryBackoff: retryBackoff,
 	}, nil
 }
 
@@ -234,8 +248,78 @@ type Paging struct {
 	Limit int `json:"limit"`
 }
 
-// Do performs an API request.
+// Do performs the request, retrying transient server-side failures.
+//
+// App Store Connect intermittently answers 500 UNEXPECTED_ERROR on writes --
+// most visibly when several localizations of the same parent are created
+// concurrently -- and the very same request succeeds moments later. Without a
+// retry every such blip surfaces as an apply error the operator has to rerun
+// by hand.
 func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
+	// Marshal the body once: each attempt needs its own reader over the bytes.
+	var bodyBytes []byte
+
+	if req.Body != nil {
+		var err error
+
+		bodyBytes, err = json.Marshal(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+
+		tflog.Debug(ctx, "API request body", map[string]interface{}{
+			"body": string(bodyBytes),
+		})
+	}
+
+	var lastErr error
+
+	for attempt := 1; attempt <= c.maxAttempts; attempt++ {
+		resp, err := c.doOnce(ctx, req, bodyBytes)
+		if err == nil {
+			return resp, nil
+		}
+
+		lastErr = err
+
+		if attempt == c.maxAttempts || !isRetryable(err) {
+			return nil, err
+		}
+
+		delay := c.retryBackoff * time.Duration(attempt)
+
+		tflog.Debug(ctx, "Retrying API request after a server error", map[string]interface{}{
+			"method":   req.Method,
+			"endpoint": req.Endpoint,
+			"attempt":  attempt,
+			"delay":    delay.String(),
+			"error":    err.Error(),
+		})
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+
+	return nil, lastErr
+}
+
+// isRetryable reports whether err is a transient server-side failure. Only 5xx
+// qualifies: a 4xx is a deterministic rejection and retrying it just repeats
+// the same answer.
+func isRetryable(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+
+	return apiErr.StatusCode >= http.StatusInternalServerError
+}
+
+// doOnce performs a single attempt of req.
+func (c *Client) doOnce(ctx context.Context, req Request, bodyBytes []byte) (*Response, error) {
 	// Build URL
 	urlStr := c.baseURL + req.Endpoint
 
@@ -248,18 +332,9 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		urlStr += "?" + params.Encode()
 	}
 
-	// Marshal body if present
 	var bodyReader io.Reader
-	if req.Body != nil {
-		bodyBytes, err := json.Marshal(req.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
+	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
-
-		tflog.Debug(ctx, "API request body", map[string]interface{}{
-			"body": string(bodyBytes),
-		})
 	}
 
 	// Create HTTP request
