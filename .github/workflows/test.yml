@@ -23,8 +23,8 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            - uses: actions/checkout@v6
-            - uses: actions/setup-go@v6
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
@@ -38,16 +38,16 @@ jobs:
     generate:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v7
               with:
                   # Full history needed for copywrite to determine correct copyright years
                   fetch-depth: 0
-            - uses: actions/setup-go@v6
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
             # We need the latest version of Terraform for our documentation generation
-            - uses: hashicorp/setup-terraform@v3
+            - uses: hashicorp/setup-terraform@v4
               with:
                   terraform_wrapper: false
             - run: make generate
@@ -71,12 +71,12 @@ jobs:
                     - "1.11.*"
                     - "1.12.*"
         steps:
-            - uses: actions/checkout@v6
-            - uses: actions/setup-go@v6
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
-            - uses: hashicorp/setup-terraform@v3
+            - uses: hashicorp/setup-terraform@v4
               with:
                   terraform_version: ${{ matrix.terraform }}
                   terraform_wrapper: false
