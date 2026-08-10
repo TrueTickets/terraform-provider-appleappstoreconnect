@@ -12,6 +12,15 @@ on:
         paths-ignore:
             - "README.md"
 
+# A push to a branch with an open PR fires both the push and pull_request
+# events for the same commit. head_ref is only set for pull_request events;
+# falling back to ref_name gives push events on that branch the same group
+# key, so the redundant run is cancelled instead of racing the acceptance
+# tests against the live Apple API twice concurrently.
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+    cancel-in-progress: true
+
 # Testing only needs permissions to read the repository contents.
 permissions:
     contents: read
