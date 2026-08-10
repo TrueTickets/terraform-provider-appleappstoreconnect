@@ -19,7 +19,7 @@ func TestAccCertificateDataSource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Read testing using ID
 			{
-				Config: testAccCertificateDataSourceConfigByID(time.Now().Unix()),
+				Config: testAccCertificateDataSourceConfigByID(time.Now().UnixNano()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_certificate.test", "id"),
 					resource.TestCheckResourceAttr("data.appleappstoreconnect_certificate.test", "certificate_type", "PASS_TYPE_ID"),
@@ -30,7 +30,7 @@ func TestAccCertificateDataSource(t *testing.T) {
 			},
 			// Read testing using filter
 			{
-				Config: testAccCertificateDataSourceConfigByFilter(time.Now().Unix()),
+				Config: testAccCertificateDataSourceConfigByFilter(time.Now().UnixNano()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttrSet("data.appleappstoreconnect_certificate.test", "id"),
 					resource.TestCheckResourceAttr("data.appleappstoreconnect_certificate.test", "certificate_type", "PASS_TYPE_ID"),
