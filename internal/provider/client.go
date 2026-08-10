@@ -9,10 +9,12 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,6 +25,12 @@ import (
 const (
 	// baseURL is the base URL for the App Store Connect API.
 	baseURL = "https://api.appstoreconnect.apple.com/v1"
+
+	// maxRetryAttempts bounds how many times a request answered with a 5xx is
+	// replayed, and retryBackoff is the base delay between attempts (it grows
+	// linearly: 1s, then 2s).
+	maxRetryAttempts = 3
+	retryBackoff     = time.Second
 
 	// tokenExpiration is the maximum lifetime of a JWT token (20 minutes).
 	tokenExpiration = 20 * time.Minute
@@ -38,6 +46,11 @@ type Client struct {
 	keyID      string
 	privateKey interface{}
 	baseURL    string
+
+	// Retry policy for transient 5xx answers. Fields rather than constants so
+	// tests can shrink the backoff.
+	maxAttempts  int
+	retryBackoff time.Duration
 
 	// Token management
 	mu           sync.RWMutex
@@ -80,12 +93,15 @@ func NewClient(issuerID, keyID, privateKeyPEM string) (*Client, error) {
 
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: 90 * time.Second,
 		},
 		issuerID:   issuerID,
 		keyID:      keyID,
 		privateKey: privateKey,
 		baseURL:    baseURL,
+
+		maxAttempts:  maxRetryAttempts,
+		retryBackoff: retryBackoff,
 	}, nil
 }
 
@@ -172,6 +188,40 @@ type Error struct {
 	Source *ErrorSource `json:"source,omitempty"`
 }
 
+// APIError is returned by Client.Do for any non-2xx HTTP response. Callers can
+// inspect StatusCode to react to specific conditions (e.g. treat 404 as a
+// drift signal and remove the resource from state) via errors.As.
+type APIError struct {
+	StatusCode int
+	Errors     []Error
+	RawBody    string
+}
+
+// Error formats the API error. The format is preserved from the previous
+// inline fmt.Errorf calls so Diagnostics messages stay stable.
+func (e *APIError) Error() string {
+	if len(e.Errors) > 0 {
+		parts := make([]string, 0, len(e.Errors))
+		for _, apiErr := range e.Errors {
+			parts = append(parts, fmt.Sprintf("%s: %s", apiErr.Title, apiErr.Detail))
+		}
+		return "API error: " + strings.Join(parts, "; ")
+	}
+	if e.RawBody != "" {
+		return fmt.Sprintf("API error (status %d): %s", e.StatusCode, e.RawBody)
+	}
+	return fmt.Sprintf("API error: HTTP %d", e.StatusCode)
+}
+
+// IsNotFound reports whether err is an *APIError with HTTP 404 status.
+func IsNotFound(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+	return apiErr.StatusCode == http.StatusNotFound
+}
+
 // ErrorSource represents the source of an error.
 type ErrorSource struct {
 	Pointer   string `json:"pointer,omitempty"`
@@ -198,8 +248,78 @@ type Paging struct {
 	Limit int `json:"limit"`
 }
 
-// Do performs an API request.
+// Do performs the request, retrying transient server-side failures.
+//
+// App Store Connect intermittently answers 500 UNEXPECTED_ERROR on writes --
+// most visibly when several localizations of the same parent are created
+// concurrently -- and the very same request succeeds moments later. Without a
+// retry every such blip surfaces as an apply error the operator has to rerun
+// by hand.
 func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
+	// Marshal the body once: each attempt needs its own reader over the bytes.
+	var bodyBytes []byte
+
+	if req.Body != nil {
+		var err error
+
+		bodyBytes, err = json.Marshal(req.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to marshal request body: %w", err)
+		}
+
+		tflog.Debug(ctx, "API request body", map[string]interface{}{
+			"body": string(bodyBytes),
+		})
+	}
+
+	var lastErr error
+
+	for attempt := 1; attempt <= c.maxAttempts; attempt++ {
+		resp, err := c.doOnce(ctx, req, bodyBytes)
+		if err == nil {
+			return resp, nil
+		}
+
+		lastErr = err
+
+		if attempt == c.maxAttempts || !isRetryable(err) {
+			return nil, err
+		}
+
+		delay := c.retryBackoff * time.Duration(attempt)
+
+		tflog.Debug(ctx, "Retrying API request after a server error", map[string]interface{}{
+			"method":   req.Method,
+			"endpoint": req.Endpoint,
+			"attempt":  attempt,
+			"delay":    delay.String(),
+			"error":    err.Error(),
+		})
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+
+	return nil, lastErr
+}
+
+// isRetryable reports whether err is a transient server-side failure. Only 5xx
+// qualifies: a 4xx is a deterministic rejection and retrying it just repeats
+// the same answer.
+func isRetryable(err error) bool {
+	var apiErr *APIError
+	if !errors.As(err, &apiErr) {
+		return false
+	}
+
+	return apiErr.StatusCode >= http.StatusInternalServerError
+}
+
+// doOnce performs a single attempt of req.
+func (c *Client) doOnce(ctx context.Context, req Request, bodyBytes []byte) (*Response, error) {
 	// Build URL
 	urlStr := c.baseURL + req.Endpoint
 
@@ -212,18 +332,9 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		urlStr += "?" + params.Encode()
 	}
 
-	// Marshal body if present
 	var bodyReader io.Reader
-	if req.Body != nil {
-		bodyBytes, err := json.Marshal(req.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to marshal request body: %w", err)
-		}
+	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
-
-		tflog.Debug(ctx, "API request body", map[string]interface{}{
-			"body": string(bodyBytes),
-		})
 	}
 
 	// Create HTTP request
@@ -275,34 +386,27 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		if httpResp.StatusCode >= 200 && httpResp.StatusCode < 300 {
 			return &resp, nil
 		}
-		// For error responses that are empty, return generic error
-		return nil, fmt.Errorf("API error (status %d): empty response", httpResp.StatusCode)
+		// For error responses that are empty, return a typed APIError so
+		// callers can branch on the status code (e.g. 404 → RemoveResource).
+		return nil, &APIError{StatusCode: httpResp.StatusCode, RawBody: "empty response"}
 	}
 
 	if err := json.Unmarshal(respBody, &resp); err != nil {
 		// If we can't parse as a standard response, check if it's an error
 		if httpResp.StatusCode >= 400 {
-			return nil, fmt.Errorf("API error (status %d): %s", httpResp.StatusCode, string(respBody))
+			return nil, &APIError{StatusCode: httpResp.StatusCode, RawBody: string(respBody)}
 		}
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	// Check for errors
 	if len(resp.Errors) > 0 {
-		// Build error message
-		var errMsg string
-		for i, apiErr := range resp.Errors {
-			if i > 0 {
-				errMsg += "; "
-			}
-			errMsg += fmt.Sprintf("%s: %s", apiErr.Title, apiErr.Detail)
-		}
-		return nil, fmt.Errorf("API error: %s", errMsg)
+		return nil, &APIError{StatusCode: httpResp.StatusCode, Errors: resp.Errors}
 	}
 
 	// Check HTTP status
 	if httpResp.StatusCode >= 400 {
-		return nil, fmt.Errorf("API error: HTTP %d", httpResp.StatusCode)
+		return nil, &APIError{StatusCode: httpResp.StatusCode}
 	}
 
 	return &resp, nil

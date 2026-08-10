@@ -12,7 +12,7 @@ import (
 )
 
 func TestAccPassTypeIDResource(t *testing.T) {
-	testIdentifier := fmt.Sprintf("pass.io.truetickets.test.resource%d", time.Now().Unix())
+	testIdentifier := fmt.Sprintf("pass.io.truetickets.test.resource%d", time.Now().UnixNano())
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:                 func() { testAccPreCheck(t) },

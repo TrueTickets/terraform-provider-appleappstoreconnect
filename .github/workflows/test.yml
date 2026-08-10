@@ -12,6 +12,15 @@ on:
         paths-ignore:
             - "README.md"
 
+# A push to a branch with an open PR fires both the push and pull_request
+# events for the same commit. head_ref is only set for pull_request events;
+# falling back to ref_name gives push events on that branch the same group
+# key, so the redundant run is cancelled instead of racing the acceptance
+# tests against the live Apple API twice concurrently.
+concurrency:
+    group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+    cancel-in-progress: true
+
 # Testing only needs permissions to read the repository contents.
 permissions:
     contents: read
@@ -23,8 +32,8 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         steps:
-            - uses: actions/checkout@v6
-            - uses: actions/setup-go@v6
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
@@ -38,16 +47,16 @@ jobs:
     generate:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v6
+            - uses: actions/checkout@v7
               with:
                   # Full history needed for copywrite to determine correct copyright years
                   fetch-depth: 0
-            - uses: actions/setup-go@v6
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
             # We need the latest version of Terraform for our documentation generation
-            - uses: hashicorp/setup-terraform@v3
+            - uses: hashicorp/setup-terraform@v4
               with:
                   terraform_wrapper: false
             - run: make generate
@@ -71,16 +80,20 @@ jobs:
                     - "1.11.*"
                     - "1.12.*"
         steps:
-            - uses: actions/checkout@v6
-            - uses: actions/setup-go@v6
+            - uses: actions/checkout@v7
+            - uses: actions/setup-go@v7
               with:
                   go-version-file: "go.mod"
                   cache: true
-            - uses: hashicorp/setup-terraform@v3
+            - uses: hashicorp/setup-terraform@v4
               with:
                   terraform_version: ${{ matrix.terraform }}
                   terraform_wrapper: false
             - run: go mod download
+            # The acceptance test step exits 0 with a skip message when the
+            # Apple App Store Connect credentials are not configured (e.g. on
+            # forks or PRs from external contributors) so the workflow does
+            # not fail for lack of secrets.
             - env:
                   APP_STORE_CONNECT_ISSUER_ID:
                       ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
@@ -89,5 +102,10 @@ jobs:
                   APP_STORE_CONNECT_PRIVATE_KEY:
                       ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
                   TF_ACC: "1"
-              run: go test -v -cover ./internal/provider/
+              run: |
+                  if [ -z "$APP_STORE_CONNECT_ISSUER_ID" ]; then
+                      echo "Apple App Store Connect credentials not configured, skipping acceptance tests."
+                      exit 0
+                  fi
+                  go test -v -cover ./internal/provider/
               timeout-minutes: 10

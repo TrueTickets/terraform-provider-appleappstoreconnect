@@ -411,6 +411,10 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 		},
 	})
 	if err != nil {
+		if IsNotFound(err) {
+			resp.State.RemoveResource(ctx)
+			return
+		}
 		resp.Diagnostics.AddError(
 			"Client Error",
 			fmt.Sprintf("Unable to read Certificate, got error: %s", err),
@@ -754,13 +758,23 @@ func (m CertificateRecreateThresholdPlanModifier) PlanModifyString(ctx context.C
 	// Calculate the threshold time
 	thresholdTime := time.Now().Add(time.Duration(thresholdSeconds) * time.Second)
 
-	// If the certificate expires within the threshold, require replacement
+	// If the certificate expires within the threshold, require replacement.
+	//
+	// Setting RequiresReplace alone is not enough: expiration_date has no
+	// UseStateForUnknown, but its planned value is still carried forward
+	// unchanged from state (Terraform's own proposed-new-state computation
+	// does that for any Computed attribute the config doesn't set). With
+	// every attribute in the plan byte-identical to state, Terraform treats
+	// the whole resource as a no-op and never looks at RequiresReplace.
+	// Marking the plan value unknown makes the resource visibly differ from
+	// state so the replacement is actually honored.
 	if expirationDate.Before(thresholdTime) {
 		tflog.Info(ctx, "Certificate expiration is within recreate threshold, requiring replacement", map[string]interface{}{
 			"expiration_date":   expirationDate.Format("2006-01-02T15:04:05Z"),
 			"threshold_time":    thresholdTime.Format("2006-01-02T15:04:05Z"),
 			"threshold_seconds": thresholdSeconds,
 		})
+		resp.PlanValue = types.StringUnknown()
 		resp.RequiresReplace = true
 	}
 }

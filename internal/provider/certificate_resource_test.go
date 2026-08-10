@@ -19,7 +19,7 @@ func TestAccCertificateResource(t *testing.T) {
 		Steps: []resource.TestStep{
 			// Create and Read testing
 			{
-				Config: testAccCertificateResourceConfig("PASS_TYPE_ID", testCSRContent, time.Now().Unix()),
+				Config: testAccCertificateResourceConfig("PASS_TYPE_ID", testCSRContent, time.Now().UnixNano()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "certificate_type", "PASS_TYPE_ID"),
 					resource.TestCheckResourceAttrSet("appleappstoreconnect_certificate.test", "id"),
@@ -32,7 +32,7 @@ func TestAccCertificateResource(t *testing.T) {
 			},
 			// Test with custom recreate_threshold (requires replacement since certificates are immutable)
 			{
-				Config: testAccCertificateResourceConfigWithThreshold("PASS_TYPE_ID", testCSRContent, 5184000, time.Now().Unix()),
+				Config: testAccCertificateResourceConfigWithThreshold("PASS_TYPE_ID", testCSRContent, 5184000, time.Now().UnixNano()),
 				Check: resource.ComposeAggregateTestCheckFunc(
 					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "certificate_type", "PASS_TYPE_ID"),
 					resource.TestCheckResourceAttr("appleappstoreconnect_certificate.test", "recreate_threshold", "5184000"),
