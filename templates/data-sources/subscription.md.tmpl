@@ -1,0 +1,33 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Find by ID
+
+```hcl
+data "appleappstoreconnect_subscription" "example" {
+  id = "1234567890"
+}
+```
+
+### Find by group and product ID
+
+```hcl
+data "appleappstoreconnect_subscription" "example" {
+  filter = {
+    subscription_group_id = appleappstoreconnect_subscription_group.premium.id
+    product_id            = "com.example.app.premium.monthly"
+  }
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

@@ -1,0 +1,57 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+In-App Purchases are bound to a single app and cannot be shared between apps. To
+manage the same product across several apps (e.g. production and staging), define
+it once and instantiate it per app — see the `appleappstoreconnect_app` data
+source and `for_each`.
+
+## Example Usage
+
+### Basic Example
+
+```hcl
+data "appleappstoreconnect_app" "example" {
+  bundle_id = "com.example.app"
+}
+
+resource "appleappstoreconnect_in_app_purchase" "premium" {
+  app_id               = data.appleappstoreconnect_app.example.id
+  product_id           = "com.example.app.premium"
+  name                 = "Premium"
+  in_app_purchase_type = "NON_CONSUMABLE"
+  family_sharable      = true
+}
+```
+
+### Consumable with a review note
+
+```hcl
+resource "appleappstoreconnect_in_app_purchase" "coins" {
+  app_id               = data.appleappstoreconnect_app.example.id
+  product_id           = "com.example.app.coins_100"
+  name                 = "100 Coins"
+  in_app_purchase_type = "CONSUMABLE"
+  review_note          = "Grants 100 in-game coins."
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+In-App Purchases can be imported using their ID:
+
+```bash
+terraform import appleappstoreconnect_in_app_purchase.example XXXXXXXXXX
+```
+
+Where `XXXXXXXXXX` is the In-App Purchase ID from App Store Connect (not the product ID).

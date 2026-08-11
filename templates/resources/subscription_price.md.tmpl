@@ -1,0 +1,36 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+```hcl
+data "appleappstoreconnect_subscription_price_point" "usd_499" {
+  subscription_id = appleappstoreconnect_subscription.monthly.id
+  territory       = "USA"
+  customer_price  = "4.99"
+}
+
+resource "appleappstoreconnect_subscription_price" "usd" {
+  subscription_id             = appleappstoreconnect_subscription.monthly.id
+  subscription_price_point_id = data.appleappstoreconnect_subscription_price_point.usd_499.id
+  territory                   = "USA"
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Subscription prices have no individual read endpoint, so import requires both the subscription ID and the price ID:
+
+```bash
+terraform import appleappstoreconnect_subscription_price.usd <subscription_id>:<price_id>
+```

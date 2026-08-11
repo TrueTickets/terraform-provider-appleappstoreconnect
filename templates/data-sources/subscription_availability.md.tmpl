@@ -1,0 +1,24 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+```hcl
+data "appleappstoreconnect_subscription_availability" "monthly" {
+  subscription_id = appleappstoreconnect_subscription.monthly.id
+}
+
+output "available_territories" {
+  value = data.appleappstoreconnect_subscription_availability.monthly.available_territories
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

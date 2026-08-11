@@ -187,6 +187,17 @@ func (p *AppleAppStoreConnectProvider) Resources(ctx context.Context) []func() r
 	return []func() resource.Resource{
 		NewPassTypeIDResource,
 		NewCertificateResource,
+		NewInAppPurchaseResource,
+		NewInAppPurchaseLocalizationResource,
+		NewInAppPurchasePriceScheduleResource,
+		NewInAppPurchaseAvailabilityResource,
+		NewInAppPurchaseSubmissionResource,
+		NewSubscriptionGroupResource,
+		NewSubscriptionGroupLocalizationResource,
+		NewSubscriptionResource,
+		NewSubscriptionLocalizationResource,
+		NewSubscriptionPriceResource,
+		NewSubscriptionGroupSubmissionResource,
 	}
 }
 
@@ -195,6 +206,13 @@ func (p *AppleAppStoreConnectProvider) DataSources(ctx context.Context) []func()
 		NewPassTypeIDDataSource,
 		NewCertificateDataSource,
 		NewCertificatesDataSource,
+		NewAppDataSource,
+		NewTerritoriesDataSource,
+		NewInAppPurchaseDataSource,
+		NewInAppPurchasePricePointDataSource,
+		NewSubscriptionDataSource,
+		NewSubscriptionPricePointDataSource,
+		NewSubscriptionAvailabilityDataSource,
 	}
 }
 

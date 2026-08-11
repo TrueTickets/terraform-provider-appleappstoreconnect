@@ -1,0 +1,22 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+```hcl
+data "appleappstoreconnect_subscription_price_point" "usd_499" {
+  subscription_id = appleappstoreconnect_subscription.monthly.id
+  territory       = "USA"
+  customer_price  = "4.99"
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

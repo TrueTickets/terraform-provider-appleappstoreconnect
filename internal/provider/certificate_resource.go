@@ -282,7 +282,7 @@ func (r *CertificateResource) Create(ctx context.Context, req resource.CreateReq
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
 		Method:   http.MethodPost,
-		Endpoint: "/certificates",
+		Endpoint: "/v1/certificates",
 		Body:     createReq,
 	})
 	if err != nil {
@@ -405,7 +405,7 @@ func (r *CertificateResource) Read(ctx context.Context, req resource.ReadRequest
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
 		Method:   http.MethodGet,
-		Endpoint: fmt.Sprintf("/certificates/%s", data.ID.ValueString()),
+		Endpoint: fmt.Sprintf("/v1/certificates/%s", data.ID.ValueString()),
 		Query: map[string]string{
 			"include": "passTypeId",
 		},

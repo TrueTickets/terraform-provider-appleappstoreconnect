@@ -157,7 +157,7 @@ func TestClient_Do(t *testing.T) {
 	}
 
 	// Override the baseURL for testing
-	client.baseURL = server.URL + "/v1"
+	client.baseURL = server.URL
 
 	ctx := context.Background()
 
@@ -165,7 +165,7 @@ func TestClient_Do(t *testing.T) {
 	t.Run("successful request", func(t *testing.T) {
 		req := Request{
 			Method:   http.MethodGet,
-			Endpoint: "/passTypeIds",
+			Endpoint: "/v1/passTypeIds",
 		}
 
 		resp, err := client.Do(ctx, req)
@@ -195,7 +195,7 @@ func TestClient_Do(t *testing.T) {
 	t.Run("error response", func(t *testing.T) {
 		req := Request{
 			Method:   http.MethodGet,
-			Endpoint: "/error",
+			Endpoint: "/v1/error",
 		}
 
 		_, err := client.Do(ctx, req)
@@ -212,7 +212,7 @@ func TestClient_Do(t *testing.T) {
 	t.Run("with query parameters", func(t *testing.T) {
 		req := Request{
 			Method:   http.MethodGet,
-			Endpoint: "/passTypeIds",
+			Endpoint: "/v1/passTypeIds",
 			Query: map[string]string{
 				"filter[identifier]": "pass.io.truetickets.test.test",
 				"include":            "certificates",
@@ -245,7 +245,7 @@ func TestClient_Do(t *testing.T) {
 
 		req := Request{
 			Method:   http.MethodPost,
-			Endpoint: "/passTypeIds",
+			Endpoint: "/v1/passTypeIds",
 			Body:     bodyBytes,
 		}
 

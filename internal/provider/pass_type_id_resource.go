@@ -144,7 +144,7 @@ func (r *PassTypeIDResource) Create(ctx context.Context, req resource.CreateRequ
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
 		Method:   http.MethodPost,
-		Endpoint: "/passTypeIds",
+		Endpoint: "/v1/passTypeIds",
 		Body:     createReq,
 	})
 	if err != nil {
@@ -228,7 +228,7 @@ func (r *PassTypeIDResource) Read(ctx context.Context, req resource.ReadRequest,
 	// Make the API request
 	apiResp, err := r.client.Do(ctx, Request{
 		Method:   http.MethodGet,
-		Endpoint: fmt.Sprintf("/passTypeIds/%s", data.ID.ValueString()),
+		Endpoint: fmt.Sprintf("/v1/passTypeIds/%s", data.ID.ValueString()),
 	})
 	if err != nil {
 		if IsNotFound(err) {
@@ -310,7 +310,7 @@ func (r *PassTypeIDResource) Delete(ctx context.Context, req resource.DeleteRequ
 	// Make the API request
 	_, err := r.client.Do(ctx, Request{
 		Method:   http.MethodDelete,
-		Endpoint: fmt.Sprintf("/passTypeIds/%s", data.ID.ValueString()),
+		Endpoint: fmt.Sprintf("/v1/passTypeIds/%s", data.ID.ValueString()),
 	})
 	if err != nil {
 		resp.Diagnostics.AddError(

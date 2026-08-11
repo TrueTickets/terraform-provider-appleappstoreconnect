@@ -71,8 +71,8 @@ func TestProviderResources(t *testing.T) {
 
 	resources := p.Resources(ctx)
 
-	if len(resources) != 2 {
-		t.Errorf("Expected 2 resources, got %d", len(resources))
+	if len(resources) != 13 {
+		t.Errorf("Expected 13 resources, got %d", len(resources))
 	}
 }
 
@@ -82,7 +82,7 @@ func TestProviderDataSources(t *testing.T) {
 
 	dataSources := p.DataSources(ctx)
 
-	if len(dataSources) != 3 {
-		t.Errorf("Expected 3 data sources, got %d", len(dataSources))
+	if len(dataSources) != 10 {
+		t.Errorf("Expected 10 data sources, got %d", len(dataSources))
 	}
 }

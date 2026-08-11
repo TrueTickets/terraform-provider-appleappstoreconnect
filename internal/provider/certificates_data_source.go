@@ -214,7 +214,7 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 	// Make the API request
 	apiResp, err := d.client.Do(ctx, Request{
 		Method:   http.MethodGet,
-		Endpoint: "/certificates",
+		Endpoint: "/v1/certificates",
 		Query:    query,
 	})
 	if err != nil {

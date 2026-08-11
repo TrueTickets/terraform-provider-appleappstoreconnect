@@ -198,7 +198,7 @@ func (d *CertificateDataSource) Read(ctx context.Context, req datasource.ReadReq
 		// Make the API request
 		apiResp, err := d.client.Do(ctx, Request{
 			Method:   http.MethodGet,
-			Endpoint: fmt.Sprintf("/certificates/%s", data.ID.ValueString()),
+			Endpoint: fmt.Sprintf("/v1/certificates/%s", data.ID.ValueString()),
 			Query: map[string]string{
 				"include": "passTypeId",
 			},
@@ -248,7 +248,7 @@ func (d *CertificateDataSource) Read(ctx context.Context, req datasource.ReadReq
 		// Make the API request to list certificates
 		apiResp, err := d.client.Do(ctx, Request{
 			Method:   http.MethodGet,
-			Endpoint: "/certificates",
+			Endpoint: "/v1/certificates",
 			Query:    query,
 		})
 		if err != nil {

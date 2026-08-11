@@ -1,0 +1,40 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### List All Territories
+
+```hcl
+data "appleappstoreconnect_territories" "all" {}
+
+output "territory_count" {
+  value = length(data.appleappstoreconnect_territories.all.territories)
+}
+```
+
+### Build a lookup map of territory code to currency
+
+```hcl
+data "appleappstoreconnect_territories" "all" {}
+
+locals {
+  currency_by_territory = {
+    for t in data.appleappstoreconnect_territories.all.territories : t.id => t.currency
+  }
+}
+
+output "usd_currency" {
+  value = local.currency_by_territory["USA"]
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

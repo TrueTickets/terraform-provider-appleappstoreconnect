@@ -1,0 +1,55 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Single locale
+
+```hcl
+resource "appleappstoreconnect_in_app_purchase_localization" "en" {
+  in_app_purchase_id = appleappstoreconnect_in_app_purchase.premium.id
+  locale             = "en-US"
+  name               = "Premium"
+  description        = "Unlock all premium features."
+}
+```
+
+### Multiple locales with for_each
+
+```hcl
+locals {
+  localizations = {
+    "en-US" = { name = "Premium", description = "Unlock all premium features." }
+    "fr-FR" = { name = "Premium", description = "Débloquez toutes les fonctionnalités premium." }
+  }
+}
+
+resource "appleappstoreconnect_in_app_purchase_localization" "this" {
+  for_each = local.localizations
+
+  in_app_purchase_id = appleappstoreconnect_in_app_purchase.premium.id
+  locale             = each.key
+  name               = each.value.name
+  description        = each.value.description
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+In-App Purchase localizations can be imported using their ID:
+
+```bash
+terraform import appleappstoreconnect_in_app_purchase_localization.en XXXXXXXXXX
+```
+
+Where `XXXXXXXXXX` is the localization ID from App Store Connect.

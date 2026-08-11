@@ -1,0 +1,30 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+```hcl
+resource "appleappstoreconnect_subscription_group_localization" "en" {
+  subscription_group_id = appleappstoreconnect_subscription_group.premium.id
+  locale                = "en-US"
+  name                  = "Premium Club"
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Subscription group localizations can be imported using their ID:
+
+```bash
+terraform import appleappstoreconnect_subscription_group_localization.en XXXXXXXXXX
+```

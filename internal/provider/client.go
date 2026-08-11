@@ -23,8 +23,11 @@ import (
 )
 
 const (
-	// baseURL is the base URL for the App Store Connect API.
-	baseURL = "https://api.appstoreconnect.apple.com/v1"
+	// baseURL is the base URL for the App Store Connect API. It intentionally
+	// omits the API version: each request's Endpoint carries its own version
+	// prefix (e.g. "/v1/passTypeIds", "/v2/inAppPurchases") because the API
+	// mixes v1 and v2 endpoints.
+	baseURL = "https://api.appstoreconnect.apple.com"
 
 	// maxRetryAttempts bounds how many times a request answered with a 5xx is
 	// replayed, and retryBackoff is the base delay between attempts (it grows

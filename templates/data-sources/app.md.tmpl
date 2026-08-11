@@ -1,0 +1,49 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+### Find by Bundle ID
+
+```hcl
+data "appleappstoreconnect_app" "example" {
+  bundle_id = "com.example.app"
+}
+
+output "app_id" {
+  value = data.appleappstoreconnect_app.example.id
+}
+```
+
+### Find by ID
+
+```hcl
+data "appleappstoreconnect_app" "example" {
+  id = "1234567890"
+}
+```
+
+### Use as the source for an In-App Purchase
+
+```hcl
+data "appleappstoreconnect_app" "prod" {
+  bundle_id = "com.example.app"
+}
+
+resource "appleappstoreconnect_in_app_purchase" "premium" {
+  app_id               = data.appleappstoreconnect_app.prod.id
+  product_id           = "com.example.app.premium"
+  name                 = "Premium"
+  in_app_purchase_type = "NON_CONSUMABLE"
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}

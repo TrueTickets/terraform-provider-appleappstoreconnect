@@ -1,0 +1,36 @@
+---
+page_title: "{{.Name}} {{.Type}} - {{.ProviderName}}"
+subcategory: ""
+description: |-
+{{ .Description | plainmarkdown | trimspace | prefixlines "  " }}
+---
+
+# {{.Name}} ({{.Type}})
+
+{{ .Description | trimspace }}
+
+## Example Usage
+
+```hcl
+resource "appleappstoreconnect_subscription_group_submission" "premium" {
+  subscription_group_id = appleappstoreconnect_subscription_group.premium.id
+
+  # Ensure subscriptions, localizations and prices exist before submitting.
+  depends_on = [
+    appleappstoreconnect_subscription_localization.monthly_en,
+    appleappstoreconnect_subscription_price.monthly_usd,
+  ]
+}
+```
+
+{{ .SchemaMarkdown | trimspace }}
+
+## Import
+
+Submissions can be imported using their ID:
+
+```bash
+terraform import appleappstoreconnect_subscription_group_submission.premium XXXXXXXXXX
+```
+
+~> **Note** Submitting is irreversible: a subscription group submission cannot be withdrawn through the API. Destroying this resource only removes it from Terraform state.

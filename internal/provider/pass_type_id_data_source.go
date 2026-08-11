@@ -132,7 +132,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		// Make the API request
 		apiResp, err := d.client.Do(ctx, Request{
 			Method:   http.MethodGet,
-			Endpoint: fmt.Sprintf("/passTypeIds/%s", data.ID.ValueString()),
+			Endpoint: fmt.Sprintf("/v1/passTypeIds/%s", data.ID.ValueString()),
 		})
 		if err != nil {
 			resp.Diagnostics.AddError(
@@ -170,7 +170,7 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		// Make the API request to list all Pass Type IDs
 		apiResp, err := d.client.Do(ctx, Request{
 			Method:   http.MethodGet,
-			Endpoint: "/passTypeIds",
+			Endpoint: "/v1/passTypeIds",
 			Query: map[string]string{
 				"filter[identifier]": filter.Identifier.ValueString(),
 			},
