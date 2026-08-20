@@ -211,8 +211,9 @@ func (d *CertificatesDataSource) Read(ctx context.Context, req datasource.ReadRe
 		tflog.Debug(ctx, "Fetching all Certificates")
 	}
 
-	// Make the API request
-	apiResp, err := d.client.Do(ctx, Request{
+	// Make the API request, following pagination so certificates past the
+	// first page are not silently dropped.
+	apiResp, err := d.client.DoList(ctx, Request{
 		Method:   http.MethodGet,
 		Endpoint: "/certificates",
 		Query:    query,

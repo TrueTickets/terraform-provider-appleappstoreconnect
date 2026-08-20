@@ -167,12 +167,14 @@ func (d *PassTypeIDDataSource) Read(ctx context.Context, req datasource.ReadRequ
 			"identifier": filter.Identifier.ValueString(),
 		})
 
-		// Make the API request to list all Pass Type IDs
-		apiResp, err := d.client.Do(ctx, Request{
+		// Make the API request to list all Pass Type IDs, following pagination
+		// so a match on a later page is not missed.
+		apiResp, err := d.client.DoList(ctx, Request{
 			Method:   http.MethodGet,
 			Endpoint: "/passTypeIds",
 			Query: map[string]string{
 				"filter[identifier]": filter.Identifier.ValueString(),
+				"limit":              "200",
 			},
 		})
 		if err != nil {

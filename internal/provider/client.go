@@ -32,6 +32,12 @@ const (
 	maxRetryAttempts = 3
 	retryBackoff     = time.Second
 
+	// maxListPages caps how many pages DoList will follow. App Store Connect
+	// collections here (certificates, pass type IDs) are small, so this only
+	// guards against a server that keeps handing back a next cursor; it sits far
+	// above any real collection (200 records per page * 500 pages).
+	maxListPages = 500
+
 	// tokenExpiration is the maximum lifetime of a JWT token (20 minutes).
 	tokenExpiration = 20 * time.Minute
 
@@ -272,10 +278,19 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		})
 	}
 
+	return c.retry(ctx, req.Method, req.Endpoint, func(ctx context.Context) (*Response, error) {
+		return c.doOnce(ctx, req, bodyBytes)
+	})
+}
+
+// retry replays send while it fails with a transient server-side error,
+// backing off linearly between attempts. method and endpoint are used only as
+// log context.
+func (c *Client) retry(ctx context.Context, method, endpoint string, send func(context.Context) (*Response, error)) (*Response, error) {
 	var lastErr error
 
 	for attempt := 1; attempt <= c.maxAttempts; attempt++ {
-		resp, err := c.doOnce(ctx, req, bodyBytes)
+		resp, err := send(ctx)
 		if err == nil {
 			return resp, nil
 		}
@@ -289,8 +304,8 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 		delay := c.retryBackoff * time.Duration(attempt)
 
 		tflog.Debug(ctx, "Retrying API request after a server error", map[string]interface{}{
-			"method":   req.Method,
-			"endpoint": req.Endpoint,
+			"method":   method,
+			"endpoint": endpoint,
 			"attempt":  attempt,
 			"delay":    delay.String(),
 			"error":    err.Error(),
@@ -304,6 +319,79 @@ func (c *Client) Do(ctx context.Context, req Request) (*Response, error) {
 	}
 
 	return nil, lastErr
+}
+
+// DoList performs a GET and transparently follows JSON:API pagination
+// (links.next), accumulating every page's data array into the returned
+// Response. App Store Connect serves list endpoints one page at a time (20 by
+// default, 200 max), so a caller that reads only the first page silently drops
+// every record past it -- a filter lookup can then report a resource as absent
+// when it merely sits on a later page. Callers unmarshal the returned Data
+// exactly as before; it is the concatenation of all pages' items.
+func (c *Client) DoList(ctx context.Context, req Request) (*Response, error) {
+	resp, err := c.Do(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	items, err := decodeDataItems(resp.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	next := resp.Links.Next
+
+	for page := 0; next != "" && page < maxListPages; page++ {
+		pageResp, err := c.doPage(ctx, next)
+		if err != nil {
+			return nil, err
+		}
+
+		pageItems, err := decodeDataItems(pageResp.Data)
+		if err != nil {
+			return nil, err
+		}
+
+		items = append(items, pageItems...)
+		next = pageResp.Links.Next
+	}
+
+	if items == nil {
+		items = []json.RawMessage{}
+	}
+
+	combined, err := json.Marshal(items)
+	if err != nil {
+		return nil, fmt.Errorf("failed to combine paginated response: %w", err)
+	}
+
+	resp.Data = combined
+	resp.Links = Links{}
+
+	return resp, nil
+}
+
+// doPage fetches a single pagination URL (an absolute links.next value),
+// applying the same transient-error retry policy as Do.
+func (c *Client) doPage(ctx context.Context, pageURL string) (*Response, error) {
+	return c.retry(ctx, http.MethodGet, pageURL, func(ctx context.Context) (*Response, error) {
+		return c.doOnceURL(ctx, http.MethodGet, pageURL, nil)
+	})
+}
+
+// decodeDataItems splits a JSON:API data array into its elements. A null or
+// empty body yields no items.
+func decodeDataItems(data json.RawMessage) ([]json.RawMessage, error) {
+	if len(data) == 0 || string(data) == "null" {
+		return nil, nil
+	}
+
+	var items []json.RawMessage
+	if err := json.Unmarshal(data, &items); err != nil {
+		return nil, fmt.Errorf("failed to parse paginated data array: %w", err)
+	}
+
+	return items, nil
 }
 
 // isRetryable reports whether err is a transient server-side failure. Only 5xx
@@ -332,13 +420,20 @@ func (c *Client) doOnce(ctx context.Context, req Request, bodyBytes []byte) (*Re
 		urlStr += "?" + params.Encode()
 	}
 
+	return c.doOnceURL(ctx, req.Method, urlStr, bodyBytes)
+}
+
+// doOnceURL performs a single request against a fully-formed URL. It backs
+// doOnce (which builds the URL from a Request) and doPage (which is handed an
+// absolute links.next cursor).
+func (c *Client) doOnceURL(ctx context.Context, method, urlStr string, bodyBytes []byte) (*Response, error) {
 	var bodyReader io.Reader
 	if bodyBytes != nil {
 		bodyReader = bytes.NewReader(bodyBytes)
 	}
 
 	// Create HTTP request
-	httpReq, err := http.NewRequestWithContext(ctx, req.Method, urlStr, bodyReader)
+	httpReq, err := http.NewRequestWithContext(ctx, method, urlStr, bodyReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -355,9 +450,8 @@ func (c *Client) doOnce(ctx context.Context, req Request, bodyBytes []byte) (*Re
 	httpReq.Header.Set("Accept", "application/json")
 
 	tflog.Debug(ctx, "Making API request", map[string]interface{}{
-		"method":   req.Method,
-		"endpoint": req.Endpoint,
-		"url":      urlStr,
+		"method": method,
+		"url":    urlStr,
 	})
 
 	// Perform request
