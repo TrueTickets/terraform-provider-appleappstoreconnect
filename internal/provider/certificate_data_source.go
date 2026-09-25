@@ -235,6 +235,7 @@ func (d *CertificateDataSource) Read(ctx context.Context, req datasource.ReadReq
 		// Build query parameters
 		query := make(map[string]string)
 		query["include"] = "passTypeId"
+		query["limit"] = "200" // Maximum page size allowed by the API
 
 		if !filter.CertificateType.IsNull() {
 			query["filter[certificateType]"] = filter.CertificateType.ValueString()
@@ -245,8 +246,10 @@ func (d *CertificateDataSource) Read(ctx context.Context, req datasource.ReadReq
 			"serial_number":    filter.SerialNumber.ValueString(),
 		})
 
-		// Make the API request to list certificates
-		apiResp, err := d.client.Do(ctx, Request{
+		// Make the API request to list certificates, following pagination so a
+		// serial-number match on a later page is not missed and reported as
+		// "not found".
+		apiResp, err := d.client.DoList(ctx, Request{
 			Method:   http.MethodGet,
 			Endpoint: "/certificates",
 			Query:    query,
